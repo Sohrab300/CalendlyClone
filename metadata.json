@@ -1,0 +1,5 @@
+{
+  "name": "HVTech - Scheduling Made Simple",
+  "description": "A professional scheduling application inspired by Calendly, built with React, Tailwind CSS, and Supabase.",
+  "requestFramePermissions": []
+}
