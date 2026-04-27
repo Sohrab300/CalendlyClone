@@ -160,7 +160,7 @@ export const TimeSlots: React.FC<TimeSlotsProps> = ({
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto pr-2 custom-scrollbar pb-10">
+    <div className="w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar pb-10 pr-4">
       <div className="space-y-3 max-w-sm mx-auto md:mx-0">
         {slots.map((slot) => {
           const isSelected = selectedTime === slot.label;
@@ -169,7 +169,7 @@ export const TimeSlots: React.FC<TimeSlotsProps> = ({
             <div
               key={slot.label}
               className={cn(
-                "time-slot-row mr-8",
+                "time-slot-row",
                 isSelected && "time-slot-row-selected",
               )}
             >
