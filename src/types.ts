@@ -1,3 +1,13 @@
+export type CustomQuestion = {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'radio' | 'checkbox' | 'select' | 'phone';
+  required: boolean;
+  status: boolean;
+  options?: string[];
+  includeOther?: boolean;
+};
+
 export type EventType = {
   id: string;
   title: string;
@@ -5,6 +15,12 @@ export type EventType = {
   duration: number; // in minutes
   slug: string;
   location_type: 'web_conference' | 'in_person' | 'phone';
+  time_increment?: number;
+  timezone_display?: 'detect' | 'lock';
+  invitee_detail_type?: 'name_email' | 'first_last_email';
+  autofill_enabled?: boolean;
+  allow_guests?: boolean;
+  questions?: CustomQuestion[];
 };
 
 export type Booking = {

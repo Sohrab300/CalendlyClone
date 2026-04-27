@@ -1,49 +1,74 @@
 import React from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Plus, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { EventType } from '../services/availabilityService';
+import { PhoneInput } from './PhoneInput';
 
 interface BookingFormProps {
   onBack: () => void;
   onSubmit: (data: any) => void;
   isSubmitting?: boolean;
+  event: EventType;
 }
 
-export const BookingForm: React.FC<BookingFormProps> = ({ onBack, onSubmit, isSubmitting }) => {
-  const [formData, setFormData] = React.useState({
+export const BookingForm: React.FC<BookingFormProps> = ({ onBack, onSubmit, isSubmitting, event }) => {
+  const [formData, setFormData] = React.useState<any>({
     name: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    whatsapp: '',
-    automationType: [] as string[],
+    guests: [] as string[],
+    customAnswers: {} as Record<string, any>,
   });
 
-  const automationOptions = [
-    'Whatsapp Automation',
-    'AI Calling',
-    'CRM Automations',
-    'PDF Generator',
-    'Insta or Facebook Automations',
-    'Facebook Marketplace Automations',
-    'Lead Nurturing Automations',
-    'Apps or Websites',
-    'Digital Marketing Services',
-    'Something Else'
-  ];
+  const [showGuestInput, setShowGuestInput] = React.useState(false);
+  const [guestEmail, setGuestEmail] = React.useState('');
 
   const [errors, setErrors] = React.useState({
     email: '',
   });
+
+  // Autofill logic
+  React.useEffect(() => {
+    if (event.autofill_enabled) {
+      const savedData = localStorage.getItem('invitee_details');
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          setFormData((prev: any) => ({
+            ...prev,
+            name: parsed.name || prev.name,
+            firstName: parsed.firstName || prev.firstName,
+            lastName: parsed.lastName || prev.lastName,
+            email: parsed.email || prev.email,
+          }));
+        } catch (e) {
+          console.error('Error parsing saved invitee details', e);
+        }
+      }
+    }
+  }, [event.autofill_enabled]);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
 
-  const handleCheckboxChange = (option: string) => {
-    setFormData(prev => ({
+  const handleAddGuest = () => {
+    if (guestEmail && validateEmail(guestEmail)) {
+      setFormData((prev: any) => ({
+        ...prev,
+        guests: [...prev.guests, guestEmail]
+      }));
+      setGuestEmail('');
+      setShowGuestInput(false);
+    }
+  };
+
+  const handleRemoveGuest = (index: number) => {
+    setFormData((prev: any) => ({
       ...prev,
-      automationType: prev.automationType.includes(option)
-        ? prev.automationType.filter(i => i !== option)
-        : [...prev.automationType, option]
+      guests: prev.guests.filter((_: any, i: number) => i !== index)
     }));
   };
 
@@ -55,6 +80,17 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onBack, onSubmit, isSu
       return;
     }
     
+    // Save to local storage if autofill is enabled
+    if (event.autofill_enabled) {
+      const dataToSave = {
+        name: formData.name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+      };
+      localStorage.setItem('invitee_details', JSON.stringify(dataToSave));
+    }
+
     setErrors({ email: '' });
     onSubmit(formData);
   };
@@ -71,16 +107,41 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onBack, onSubmit, isSu
       <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-8 text-center md:text-left">Enter Details</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto md:mx-0">
-        <div>
-          <label className="block text-sm font-bold text-slate-800 mb-2">Name *</label>
-          <input
-            required
-            type="text"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-            value={formData.name}
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
-          />
-        </div>
+        {event.invitee_detail_type === 'first_last_email' ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-800 mb-2">First Name *</label>
+              <input
+                required
+                type="text"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                value={formData.firstName}
+                onChange={e => setFormData({ ...formData, firstName: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-800 mb-2">Last Name *</label>
+              <input
+                required
+                type="text"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                value={formData.lastName}
+                onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+              />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-bold text-slate-800 mb-2">Name *</label>
+            <input
+              required
+              type="text"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-bold text-slate-800 mb-2">Email *</label>
@@ -102,43 +163,309 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onBack, onSubmit, isSu
           {errors.email && <p className="mt-1 text-xs text-red-500 font-medium">{errors.email}</p>}
         </div>
 
-        <button type="button" className="text-blue-600 font-bold border border-blue-600 rounded-full px-4 py-1.5 text-sm hover:bg-blue-50 transition-colors">
-          Add Guests
-        </button>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-800 mb-4">What kind of automation are you looking for? *</label>
+        {event.allow_guests && (
           <div className="space-y-3">
-            {automationOptions.map(option => (
-              <label key={option} className="flex items-center group cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  checked={formData.automationType.includes(option)}
-                  onChange={() => handleCheckboxChange(option)}
-                />
-                <span className="ml-3 text-sm text-slate-700 font-medium group-hover:text-slate-900">{option}</span>
-              </label>
-            ))}
+            {formData.guests.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-800">Guests</label>
+                {formData.guests.map((guest: string, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="text-sm text-slate-600">{guest}</span>
+                    <button 
+                      type="button"
+                      onClick={() => handleRemoveGuest(idx)}
+                      className="p-1 hover:bg-slate-200 rounded-full text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {showGuestInput ? (
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-slate-800">Guest Email</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    className="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    value={guestEmail}
+                    onChange={e => setGuestEmail(e.target.value)}
+                    placeholder="guest@example.com"
+                    autoFocus
+                  />
+                  <button 
+                    type="button"
+                    onClick={handleAddGuest}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700"
+                  >
+                    Add
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setShowGuestInput(false)}
+                    className="p-2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                type="button" 
+                onClick={() => setShowGuestInput(true)}
+                className="text-blue-600 font-bold border border-blue-600 rounded-full px-4 py-1.5 text-sm hover:bg-blue-50 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Guests
+              </button>
+            )}
           </div>
-        </div>
+        )}
 
-        <div>
-          <label className="block text-sm font-bold text-slate-800 mb-2">What is your whatsapp number? *</label>
-          <div className="flex">
-            <div className="flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50">
-               <img src="https://flagcdn.com/w20/in.png" alt="India" className="w-5 h-auto mr-2" />
-               <span className="text-sm text-gray-600">+91</span>
-            </div>
-            <input
-              required
-              type="tel"
-              className="flex-1 p-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              value={formData.whatsapp}
-              onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
-            />
+        {/* Custom Questions */}
+        {event.questions?.filter(q => q.status).map((q) => (
+          <div key={q.id} className="space-y-2">
+            <label className="block text-sm font-bold text-slate-800">
+              {q.label} {q.required && '*'}
+            </label>
+            
+            {q.type === 'textarea' ? (
+              <textarea
+                required={q.required}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none min-h-[100px]"
+                value={formData.customAnswers[q.id] || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  customAnswers: { ...formData.customAnswers, [q.id]: e.target.value }
+                })}
+              />
+            ) : q.type === 'text' ? (
+              <input
+                required={q.required}
+                type="text"
+                maxLength={255}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                value={formData.customAnswers[q.id] || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  customAnswers: { ...formData.customAnswers, [q.id]: e.target.value }
+                })}
+              />
+            ) : q.type === 'phone' ? (
+              <PhoneInput
+                required={q.required}
+                value={formData.customAnswers[q.id] || ''}
+                onChange={val => setFormData({
+                  ...formData,
+                  customAnswers: { ...formData.customAnswers, [q.id]: val }
+                })}
+                placeholder="Phone number"
+              />
+            ) : q.type === 'select' ? (
+              <div className="space-y-2">
+                <select
+                  required={q.required}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+                  value={formData.customAnswers[q.id]?.value || ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData({
+                      ...formData,
+                      customAnswers: { 
+                        ...formData.customAnswers, 
+                        [q.id]: { ...formData.customAnswers[q.id], value: val } 
+                      }
+                    });
+                  }}
+                >
+                  <option value="">Select an option</option>
+                  {q.options?.filter(opt => opt.trim()).map((opt, i) => (
+                    <option key={i} value={opt}>{opt}</option>
+                  ))}
+                  {q.includeOther && <option value="Other">Other</option>}
+                </select>
+                {q.includeOther && formData.customAnswers[q.id]?.value === 'Other' && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Other"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    value={formData.customAnswers[q.id]?.otherValue || ''}
+                    onChange={e => setFormData({
+                      ...formData,
+                      customAnswers: { 
+                        ...formData.customAnswers, 
+                        [q.id]: { ...formData.customAnswers[q.id], otherValue: e.target.value } 
+                      }
+                    })}
+                  />
+                )}
+              </div>
+            ) : q.type === 'radio' ? (
+              <div className="space-y-3">
+                {q.options?.filter(opt => opt.trim()).map((opt, i) => (
+                  <label key={i} className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center">
+                      <input
+                        type="radio"
+                        name={`question-${q.id}`}
+                        required={q.required && !formData.customAnswers[q.id]?.value}
+                        checked={formData.customAnswers[q.id]?.value === opt}
+                        onChange={() => setFormData({
+                          ...formData,
+                          customAnswers: { 
+                            ...formData.customAnswers, 
+                            [q.id]: { ...formData.customAnswers[q.id], value: opt } 
+                          }
+                        })}
+                        className="sr-only"
+                      />
+                      <div className={cn(
+                        "w-5 h-5 rounded-full border-2 transition-all",
+                        formData.customAnswers[q.id]?.value === opt ? "border-blue-600 bg-white" : "border-slate-300 group-hover:border-slate-400"
+                      )} />
+                      {formData.customAnswers[q.id]?.value === opt && (
+                        <div className="absolute w-2.5 h-2.5 rounded-full bg-blue-600" />
+                      )}
+                    </div>
+                    <span className="text-sm text-slate-700">{opt}</span>
+                  </label>
+                ))}
+                {q.includeOther && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input
+                          type="radio"
+                          name={`question-${q.id}`}
+                          required={q.required && !formData.customAnswers[q.id]?.value}
+                          checked={formData.customAnswers[q.id]?.value === 'Other'}
+                          onChange={() => setFormData({
+                            ...formData,
+                            customAnswers: { 
+                              ...formData.customAnswers, 
+                              [q.id]: { ...formData.customAnswers[q.id], value: 'Other' } 
+                            }
+                          })}
+                          className="sr-only"
+                        />
+                        <div className={cn(
+                          "w-5 h-5 rounded-full border-2 transition-all",
+                          formData.customAnswers[q.id]?.value === 'Other' ? "border-blue-600 bg-white" : "border-slate-300 group-hover:border-slate-400"
+                        )} />
+                        {formData.customAnswers[q.id]?.value === 'Other' && (
+                          <div className="absolute w-2.5 h-2.5 rounded-full bg-blue-600" />
+                        )}
+                      </div>
+                      <span className="text-sm text-slate-700">Other</span>
+                    </label>
+                    {formData.customAnswers[q.id]?.value === 'Other' && (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Other"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        value={formData.customAnswers[q.id]?.otherValue || ''}
+                        onChange={e => setFormData({
+                          ...formData,
+                          customAnswers: { 
+                            ...formData.customAnswers, 
+                            [q.id]: { ...formData.customAnswers[q.id], otherValue: e.target.value } 
+                          }
+                        })}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : q.type === 'checkbox' ? (
+              <div className="space-y-3">
+                {q.options?.filter(opt => opt.trim()).map((opt, i) => (
+                  <label key={i} className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.customAnswers[q.id]?.values?.includes(opt)}
+                        onChange={(e) => {
+                          const currentValues = formData.customAnswers[q.id]?.values || [];
+                          const newValues = e.target.checked 
+                            ? [...currentValues, opt]
+                            : currentValues.filter((v: string) => v !== opt);
+                          setFormData({
+                            ...formData,
+                            customAnswers: { 
+                              ...formData.customAnswers, 
+                              [q.id]: { ...formData.customAnswers[q.id], values: newValues } 
+                            }
+                          });
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={cn(
+                        "w-5 h-5 rounded border-2 transition-all flex items-center justify-center",
+                        formData.customAnswers[q.id]?.values?.includes(opt) ? "border-blue-600 bg-blue-600" : "border-slate-300 group-hover:border-slate-400 bg-white"
+                      )} >
+                        {formData.customAnswers[q.id]?.values?.includes(opt) && (
+                          <div className="w-1.5 h-2.5 border-b-2 border-r-2 border-white rotate-45 mb-0.5" />
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-sm text-slate-700">{opt}</span>
+                  </label>
+                ))}
+                {q.includeOther && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.customAnswers[q.id]?.includeOther}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              customAnswers: { 
+                                ...formData.customAnswers, 
+                                [q.id]: { ...formData.customAnswers[q.id], includeOther: e.target.checked } 
+                              }
+                            });
+                          }}
+                          className="sr-only"
+                        />
+                        <div className={cn(
+                          "w-5 h-5 rounded border-2 transition-all flex items-center justify-center",
+                          formData.customAnswers[q.id]?.includeOther ? "border-blue-600 bg-blue-600" : "border-slate-300 group-hover:border-slate-400 bg-white"
+                        )} >
+                          {formData.customAnswers[q.id]?.includeOther && (
+                            <div className="w-1.5 h-2.5 border-b-2 border-r-2 border-white rotate-45 mb-0.5" />
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-sm text-slate-700">Other</span>
+                    </label>
+                    {formData.customAnswers[q.id]?.includeOther && (
+                      <input
+                        type="text"
+                        required
+                        placeholder="Other"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        value={formData.customAnswers[q.id]?.otherValue || ''}
+                        onChange={e => setFormData({
+                          ...formData,
+                          customAnswers: { 
+                            ...formData.customAnswers, 
+                            [q.id]: { ...formData.customAnswers[q.id], otherValue: e.target.value } 
+                          }
+                        })}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
-        </div>
+        ))}
 
         <p className="text-xs text-gray-500 leading-relaxed">
           By proceeding, you confirm that you have read and agree to{' '}
@@ -160,7 +487,14 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onBack, onSubmit, isSu
 
       <div className="mt-12 pt-8 flex gap-4 text-sm font-medium text-blue-600">
         <button className="hover:underline">Cookie settings</button>
-        <button className="hover:underline">Privacy Policy</button>
+        <a
+          href="https://calendly.com/legal/privacy-notice"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:underline"
+        >
+          Privacy Policy
+        </a>
       </div>
     </div>
   );

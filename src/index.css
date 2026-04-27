@@ -1,6 +1,37 @@
 @import "tailwindcss";
+@import "react-quill-new/dist/quill.snow.css";
 
 @layer utilities {
+  .time-slot-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+    gap: 0;
+    transition:
+      grid-template-columns 300ms ease-in-out,
+      gap 300ms ease-in-out;
+  }
+
+  .time-slot-row-selected {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .next-button {
+    min-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateX(100%);
+    transition:
+      opacity 300ms ease-in-out,
+      transform 300ms ease-in-out;
+    white-space: nowrap;
+  }
+
+  .time-slot-row-selected .next-button {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
@@ -19,4 +50,39 @@
 body {
   background-color: #f8fafc;
   font-family: 'Inter', sans-serif;
+}
+
+/* Quill Editor Styles */
+.ql-editor {
+  min-height: 150px;
+  font-size: 0.875rem;
+  color: #334155;
+}
+.ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  background-color: #f8fafc;
+  padding: 8px;
+}
+.ql-container.ql-snow {
+  border: none;
+}
+.host-notes-display ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.host-notes-display ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.host-notes-display a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.host-notes-display p {
+  margin-bottom: 0.5rem;
 }
