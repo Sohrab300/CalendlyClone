@@ -161,8 +161,15 @@ export const Calendar: React.FC<CalendarProps> = ({
             }
           >
             <span>{formattedDate}</span>
-            {isToday && !isSelected && isCurrentMonth && (
-              <div className="absolute bottom-1.5 w-1 h-1 bg-blue-600 rounded-full" />
+            {isToday && isCurrentMonth && (
+              <div
+                className={cn(
+                  "absolute bottom-1.5 w-1 h-1 rounded-full",
+                  !isAvailable && "bg-gray-400",
+                  isAvailable && isSelected && "bg-blue-50",
+                  isAvailable && !isSelected && "bg-blue-600",
+                )}
+              />
             )}
           </div>,
         );

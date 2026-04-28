@@ -83,6 +83,7 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
   const [newScheduleName, setNewScheduleName] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(true);
   const isInitialFetchRef = React.useRef(false);
+  const dirtyWeeklyHoursRef = React.useRef<Map<number, { enabled: boolean; slots: TimeSlot[] }>>(new Map());
 
   // Date-specific hours state
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -332,28 +333,49 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
     }
   };
 
-  const saveWeeklyHours = async (dayIndex: number, enabled: boolean, slots: TimeSlot[]) => {
+  const saveWeeklyHours = async (dayIndex: number, enabled: boolean, slots: TimeSlot[], showSuccessToast = true) => {
     try {
-      const { data: schedule } = await supabase
-        .from('schedules')
-        .select('id')
-        .eq('name', selectedSchedule)
-        .single();
+      if (!currentScheduleId) return;
 
-      if (schedule) {
-        const { error } = await supabase
-          .from('weekly_hours')
-          .update({ enabled, slots })
-          .eq('schedule_id', schedule.id)
-          .eq('day_index', dayIndex);
-        
-        if (error) throw error;
+      const { error } = await supabase
+        .from('weekly_hours')
+        .update({ enabled, slots })
+        .eq('schedule_id', currentScheduleId)
+        .eq('day_index', dayIndex);
+      
+      if (error) throw error;
+      if (showSuccessToast) {
         showToast('Availability updated successfully!');
       }
     } catch (error) {
       console.error('Error saving weekly hours:', error);
       showToast('Failed to update availability', 'error');
     }
+  };
+
+  const saveDirtyWeeklyHours = async (dayIndex: number) => {
+    const pending = dirtyWeeklyHoursRef.current.get(dayIndex);
+    if (!pending) return;
+
+    dirtyWeeklyHoursRef.current.delete(dayIndex);
+    await saveWeeklyHours(dayIndex, pending.enabled, pending.slots);
+  };
+
+  const closeTimePicker = async () => {
+    const picker = openPicker;
+    setOpenPicker(null);
+
+    if (picker && picker.dayIndex !== 'modal') {
+      await saveDirtyWeeklyHours(picker.dayIndex);
+    }
+  };
+
+  const openWeeklyTimePicker = async (picker: { dayIndex: number; slotId: string; type: 'start' | 'end' }) => {
+    if (openPicker && openPicker.dayIndex !== 'modal' && openPicker.dayIndex !== picker.dayIndex) {
+      await saveDirtyWeeklyHours(openPicker.dayIndex);
+    }
+
+    setOpenPicker(picker);
   };
 
   const handlePrevMonth = () => {
@@ -407,7 +429,7 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
     await saveWeeklyHours(dayIndex, newAvailability[dayIndex].enabled, newAvailability[dayIndex].slots);
   };
 
-  const updateSlot = async (dayIndex: number | 'modal', slotId: string, type: 'start' | 'end', time: string) => {
+  const updateSlot = (dayIndex: number | 'modal', slotId: string, type: 'start' | 'end', time: string) => {
     if (dayIndex === 'modal') {
       setModalSlots(prev => prev.map(s => {
         if (s.id === slotId) {
@@ -430,7 +452,10 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
       }
     }
     setAvailability(newAvailability);
-    await saveWeeklyHours(dayIndex, newAvailability[dayIndex].enabled, newAvailability[dayIndex].slots);
+    dirtyWeeklyHoursRef.current.set(dayIndex, {
+      enabled: newAvailability[dayIndex].enabled,
+      slots: newAvailability[dayIndex].slots
+    });
   };
 
   const copyDay = (dayIndex: number) => {
@@ -940,7 +965,7 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
                               <div key={slot.id} className="flex items-center gap-3">
                                 <div className="relative">
                                   <button 
-                                    onClick={() => setOpenPicker({ dayIndex, slotId: slot.id, type: 'start' })}
+                                    onClick={() => openWeeklyTimePicker({ dayIndex, slotId: slot.id, type: 'start' })}
                                     className={cn(
                                       "w-32 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:border-blue-600 transition-all text-center",
                                       openPicker?.dayIndex === dayIndex && openPicker?.slotId === slot.id && openPicker?.type === 'start' && "border-blue-600 ring-2 ring-blue-100"
@@ -951,7 +976,7 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
                                   <TimePicker 
                                     value={slot.start}
                                     isOpen={openPicker?.dayIndex === dayIndex && openPicker?.slotId === slot.id && openPicker?.type === 'start'}
-                                    onClose={() => setOpenPicker(null)}
+                                    onClose={closeTimePicker}
                                     onChange={(time) => updateSlot(dayIndex, slot.id, 'start', time)}
                                   />
                                 </div>
@@ -960,7 +985,7 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
 
                                 <div className="relative">
                                   <button 
-                                    onClick={() => setOpenPicker({ dayIndex, slotId: slot.id, type: 'end' })}
+                                    onClick={() => openWeeklyTimePicker({ dayIndex, slotId: slot.id, type: 'end' })}
                                     className={cn(
                                       "w-32 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:border-blue-600 transition-all text-center",
                                       openPicker?.dayIndex === dayIndex && openPicker?.slotId === slot.id && openPicker?.type === 'end' && "border-blue-600 ring-2 ring-blue-100"
@@ -971,7 +996,7 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
                                   <TimePicker 
                                     value={slot.end}
                                     isOpen={openPicker?.dayIndex === dayIndex && openPicker?.slotId === slot.id && openPicker?.type === 'end'}
-                                    onClose={() => setOpenPicker(null)}
+                                    onClose={closeTimePicker}
                                     onChange={(time) => updateSlot(dayIndex, slot.id, 'end', time)}
                                     minTime={slot.start}
                                   />

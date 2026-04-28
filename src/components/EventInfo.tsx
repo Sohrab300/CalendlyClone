@@ -1,6 +1,7 @@
 import React from "react";
 import { Clock, Video, Globe, Calendar, ArrowLeft } from "lucide-react";
 import { EventType } from "../types";
+import { cn } from "../lib/utils";
 
 interface EventInfoProps {
   event: EventType;
@@ -8,6 +9,7 @@ interface EventInfoProps {
   timezone?: string;
   is24Hour?: boolean;
   onBack?: () => void;
+  showBackButtonOnDesktop?: boolean;
   hostProfile?: any;
   onCookieSettingsClick?: () => void;
 }
@@ -18,6 +20,7 @@ export const EventInfo: React.FC<EventInfoProps> = ({
   timezone,
   is24Hour,
   onBack,
+  showBackButtonOnDesktop,
   hostProfile,
   onCookieSettingsClick,
 }) => {
@@ -38,13 +41,17 @@ export const EventInfo: React.FC<EventInfoProps> = ({
   const brandLogo = hostProfile?.brand_logo_url;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="relative h-full flex flex-col">
       {onBack && (
         <button
           onClick={onBack}
-          className="md:hidden self-start p-2 -ml-2 mb-4 hover:bg-gray-100 rounded-full transition-colors"
+          className={cn(
+            "absolute left-4 top-4 z-20 p-2 hover:bg-gray-100 rounded-full transition-colors border border-gray-300 bg-white",
+            !showBackButtonOnDesktop && "md:hidden",
+          )}
+          aria-label="Go back"
         >
-          <ArrowLeft className="w-6 h-6 text-blue-600" />
+          <ArrowLeft className="w-7 h-7 text-blue-600" />
         </button>
       )}
 
@@ -59,7 +66,7 @@ export const EventInfo: React.FC<EventInfoProps> = ({
         </div>
       )}
 
-      <div className="mb-8 px-6 pt-6 md:px-8 md:pt-8">
+      <div className="mb-8 px-6 pt-6 md:px-8">
         <div className="hidden md:flex w-16 h-16 bg-black rounded-full items-center justify-center mb-2 overflow-hidden">
           {brandLogo ? (
             <img
@@ -109,22 +116,20 @@ export const EventInfo: React.FC<EventInfoProps> = ({
           {event.title}
         </h1>
 
-        <div className="space-y-4 max-w-md mx-auto md:mx-0">
-          <div className="flex items-center text-gray-600 font-semibold">
+        <div className="space-y-4 max-w-md mx-auto md:mx-0 text-sm">
+          <div className="flex items-center text-gray-600 font-medium">
             <Clock className="w-5 h-5 mr-3 opacity-70 shrink-0" />
             <span>{event.duration} min</span>
           </div>
 
-          <div className="flex items-start text-gray-600 font-semibold">
+          <div className="flex items-center text-gray-600 font-medium">
             <Video className="w-5 h-5 mr-3 mt-0.5 opacity-70 shrink-0" />
             <span>Web conferencing details provided upon confirmation.</span>
           </div>
 
-          <div className="text-gray-500">{event.description}</div>
-
           {selectedDateTime && (
             <>
-              <div className="flex items-start text-gray-600 font-semibold">
+              <div className="flex items-start text-gray-600 font-medium">
                 <Calendar className="w-5 h-5 mr-3 mt-0.5 opacity-70 shrink-0" />
                 <span>
                   {selectedDateTime
@@ -156,13 +161,14 @@ export const EventInfo: React.FC<EventInfoProps> = ({
               </div>
 
               {timezone && (
-                <div className="flex items-start text-gray-600 font-semibold">
+                <div className="flex items-start text-gray-600 font-medium">
                   <Globe className="w-5 h-5 mr-3 mt-0.5 opacity-70 shrink-0" />
                   <span>{getTimezoneName(timezone)}</span>
                 </div>
               )}
             </>
           )}
+          <div className="text-gray-500">{event.description}</div>
         </div>
       </div>
 

@@ -97,6 +97,7 @@ export default function LandingPage() {
               <Link
                 key={event.id}
                 to={`/${userSlug}/${event.slug}`}
+                state={{ fromLandingPage: true, landingPath: `/${userSlug}` }}
                 className="flex items-start justify-between p-4 hover:bg-slate-50 rounded-lg transition-colors group"
               >
                 <div className="w-full">

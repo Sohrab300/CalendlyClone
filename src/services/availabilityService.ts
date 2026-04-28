@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { startOfDay, endOfDay } from 'date-fns';
+import { addDays, addMinutes, endOfDay, format, parseISO, startOfDay } from 'date-fns';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 export interface TimeSlot {
   id: string;
@@ -330,6 +331,104 @@ export const parseTime = (timeStr: string) => {
   if (period === 'pm' && hours !== 12) hours += 12;
   if (period === 'am' && hours === 12) hours = 0;
   return hours * 60 + minutes;
+};
+
+interface GetAvailableTimeSlotsParams {
+  selectedDate: Date;
+  is24Hour: boolean;
+  weeklyHours: DayAvailability[];
+  overrides: DateOverride[];
+  bookings?: Booking[];
+  duration: number;
+  timeIncrement?: number;
+  hostTimezone?: string;
+  inviteeTimezone: string;
+  minimumNotice?: number;
+}
+
+export const getAvailableTimeSlots = ({
+  selectedDate,
+  is24Hour,
+  weeklyHours,
+  overrides,
+  bookings = [],
+  duration,
+  timeIncrement,
+  hostTimezone = "UTC",
+  inviteeTimezone,
+  minimumNotice = 0,
+}: GetAvailableTimeSlotsParams) => {
+  const availableSlots: { label: string; minutes: number }[] = [];
+  const increment = timeIncrement || 30;
+  const now = new Date();
+  const noticeThreshold = addMinutes(now, minimumNotice * 60);
+  const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
+
+  [-1, 0, 1].forEach((offset) => {
+    const hostDate = addDays(selectedDate, offset);
+    const dayIndex = hostDate.getDay();
+    const dateStr = format(hostDate, "yyyy-MM-dd");
+
+    const override = overrides.find((o) =>
+      o.dates.some((d) => format(new Date(d), "yyyy-MM-dd") === dateStr),
+    );
+
+    let activeSlots: { start: string; end: string }[] = [];
+    if (override) {
+      activeSlots = override.slots;
+    } else {
+      const dayAvailability = weeklyHours.find((h) => h.day_index === dayIndex);
+      if (dayAvailability?.enabled) {
+        activeSlots = dayAvailability.slots;
+      }
+    }
+
+    activeSlots.forEach((range) => {
+      const startMinutes = parseTime(range.start);
+      const endMinutes = parseTime(range.end);
+
+      for (let m = startMinutes; m + duration <= endMinutes; m += increment) {
+        const hostDateTimeStr = `${dateStr} ${Math.floor(m / 60)
+          .toString()
+          .padStart(2, "0")}:${(m % 60).toString().padStart(2, "0")}:00`;
+
+        const utcDate = fromZonedTime(hostDateTimeStr, hostTimezone);
+        const inviteeZonedDate = toZonedTime(utcDate, inviteeTimezone);
+        const inviteeDateStr = format(inviteeZonedDate, "yyyy-MM-dd");
+
+        if (inviteeDateStr !== selectedDateStr || utcDate < noticeThreshold) {
+          continue;
+        }
+
+        const slotEnd = addMinutes(utcDate, duration);
+        const isBooked = bookings.some((booking) => {
+          const bStart = parseISO(booking.start_time);
+          const bEnd = parseISO(booking.end_time);
+
+          return (
+            (utcDate >= bStart && utcDate < bEnd) ||
+            (slotEnd > bStart && slotEnd <= bEnd) ||
+            (bStart >= utcDate && bStart < slotEnd)
+          );
+        });
+
+        if (!isBooked) {
+          const label = format(inviteeZonedDate, is24Hour ? "HH:mm" : "h:mmaaa");
+          availableSlots.push({
+            label,
+            minutes:
+              inviteeZonedDate.getHours() * 60 + inviteeZonedDate.getMinutes(),
+          });
+        }
+      }
+    });
+  });
+
+  const uniqueSlots = Array.from(
+    new Map(availableSlots.map((slot) => [slot.label, slot])).values(),
+  );
+
+  return uniqueSlots.sort((a, b) => a.minutes - b.minutes);
 };
 
 export const formatTime = (totalMinutes: number, is24Hour: boolean = false) => {

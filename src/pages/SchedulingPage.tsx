@@ -4,7 +4,13 @@ import { ArrowLeft, Loader2, Globe, ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
 import { format, addMinutes, parseISO } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
-import { useParams, Navigate, useLocation, Link } from "react-router-dom";
+import {
+  useParams,
+  Navigate,
+  useLocation,
+  Link,
+  useNavigate,
+} from "react-router-dom";
 import { EventInfo } from "../components/EventInfo";
 import { Calendar } from "../components/Calendar";
 import { TimeSlots } from "../components/TimeSlots";
@@ -20,6 +26,7 @@ import {
   DateOverride,
   Booking,
   EventType,
+  getAvailableTimeSlots,
 } from "../services/availabilityService";
 
 type ViewState = "calendar" | "details" | "success" | "verification";
@@ -29,6 +36,8 @@ export default function SchedulingPage() {
     userSlug: string;
     eventSlug: string;
   }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [event, setEvent] = React.useState<EventType | null>(null);
   const [hostProfile, setHostProfile] = React.useState<any>(null);
 
@@ -44,6 +53,8 @@ export default function SchedulingPage() {
   const [isSelectorOpen, setIsSelectorOpen] = React.useState(false);
   const [isCookieSettingsOpen, setIsCookieSettingsOpen] = React.useState(false);
   const [now, setNow] = React.useState(new Date());
+  const cameFromLandingPage = Boolean((location.state as any)?.fromLandingPage);
+  const landingPath = (location.state as any)?.landingPath || `/${userSlug}`;
 
   // Update the clock every minute for timezone label
   React.useEffect(() => {
@@ -77,11 +88,10 @@ export default function SchedulingPage() {
   const [weeklyHours, setWeeklyHours] = React.useState<DayAvailability[]>([]);
   const [overrides, setOverrides] = React.useState<DateOverride[]>([]);
   const [bookings, setBookings] = React.useState<Booking[]>([]);
+  const [allBookings, setAllBookings] = React.useState<Booking[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  const location = useLocation();
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -92,6 +102,8 @@ export default function SchedulingPage() {
       setPendingData(null);
       setMobileStep("date");
       setIsSubmitting(false);
+      setBookings([]);
+      setAllBookings([]);
 
       setIsLoading(true);
       console.log("🔄 SchedulingPage: Loading data for", {
@@ -132,6 +144,12 @@ export default function SchedulingPage() {
 
         setEvent(foundEvent);
         setHostProfile(profile);
+        setAllBookings(
+          await availabilityService.getAllBookings(profile.id).catch((err) => {
+            console.error("Error fetching host bookings:", err);
+            return [];
+          }),
+        );
 
         // Handle timezone display logic
         if (foundEvent.timezone_display === "lock" && profile?.timezone) {
@@ -181,11 +199,13 @@ export default function SchedulingPage() {
   }, [userSlug, eventSlug, location.key]); // Depend on location.key to ensure restart on "Schedule another event"
 
   React.useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && hostProfile?.id) {
       const loadBookings = async () => {
         try {
-          const dayBookings =
-            await availabilityService.getBookings(selectedDate);
+          const dayBookings = await availabilityService.getBookings(
+            selectedDate,
+            hostProfile.id,
+          );
           setBookings(dayBookings);
         } catch (error) {
           console.error("Error loading bookings:", error);
@@ -193,7 +213,7 @@ export default function SchedulingPage() {
       };
       loadBookings();
     }
-  }, [selectedDate]);
+  }, [selectedDate, hostProfile?.id]);
 
   if (isLoading) {
     return (
@@ -243,21 +263,20 @@ export default function SchedulingPage() {
       // No limit into the future
     }
 
-    const dayIndex = date.getDay();
-    const dateStr = format(date, "yyyy-MM-dd");
-
-    // Check overrides
-    const override = overrides.find((o) =>
-      o.dates.some((d) => format(new Date(d), "yyyy-MM-dd") === dateStr),
+    return (
+      getAvailableTimeSlots({
+        selectedDate: date,
+        is24Hour,
+        weeklyHours,
+        overrides,
+        bookings: allBookings,
+        duration: event.duration,
+        timeIncrement: event.time_increment,
+        hostTimezone: hostProfile?.timezone || "Asia/Kolkata",
+        inviteeTimezone: timezone,
+        minimumNotice: event.minimum_notice,
+      }).length > 0
     );
-
-    if (override) {
-      return override.slots.length > 0;
-    }
-
-    // Check weekly hours
-    const dayAvailability = weeklyHours.find((h) => h.day_index === dayIndex);
-    return dayAvailability?.enabled || false;
   };
 
   const handleDateSelect = (date: Date) => {
@@ -277,6 +296,17 @@ export default function SchedulingPage() {
   const handleBackToCalendar = () => {
     setView("calendar");
     setMobileStep("date");
+  };
+
+  const handleEventInfoBack = () => {
+    if (view === "details") {
+      handleBackToCalendar();
+      return;
+    }
+
+    if (cameFromLandingPage) {
+      navigate(landingPath);
+    }
   };
 
   const handleBackToDate = () => {
@@ -300,13 +330,16 @@ export default function SchedulingPage() {
           }),
         });
 
-        if (!response.ok) throw new Error("Failed to send verification code");
+        if (!response.ok) {
+          const err = await response.json().catch(() => null);
+          throw new Error(err?.error || "Failed to send verification code");
+        }
 
         setPendingData(data);
         setView("verification");
-      } catch (err) {
+      } catch (err: any) {
         console.error("Verification error:", err);
-        alert("Failed to send verification code. Please try again.");
+        alert(err.message || "Failed to send verification code. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
@@ -343,7 +376,7 @@ export default function SchedulingPage() {
 
   const handleResendCode = async () => {
     if (!pendingData || !event) return;
-    await fetch("/api/verification/send", {
+    const response = await fetch("/api/verification/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -351,6 +384,11 @@ export default function SchedulingPage() {
         meetingName: event.title,
       }),
     });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null);
+      throw new Error(err?.error || "Failed to resend verification code");
+    }
   };
 
   const processFinalBooking = async (data: any) => {
@@ -562,7 +600,14 @@ export default function SchedulingPage() {
                   }
                   timezone={timezone}
                   is24Hour={is24Hour}
-                  onBack={view === "details" ? handleBackToCalendar : undefined}
+                  onBack={
+                    view === "details" || cameFromLandingPage
+                      ? handleEventInfoBack
+                      : undefined
+                  }
+                  showBackButtonOnDesktop={
+                    view === "details" || cameFromLandingPage
+                  }
                   hostProfile={hostProfile}
                   onCookieSettingsClick={() => setIsCookieSettingsOpen(true)}
                 />
@@ -710,7 +755,6 @@ export default function SchedulingPage() {
                   </div>
                 ) : (
                   <BookingForm
-                    onBack={handleBackToCalendar}
                     onSubmit={handleBookingSubmit}
                     isSubmitting={isSubmitting}
                     event={event}

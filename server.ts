@@ -10,6 +10,19 @@ import { toZonedTime } from "date-fns-tz";
 
 dotenv.config();
 
+const getEmailCredentials = () => ({
+  emailUser: (process.env.EMAIL_USER || 'sheikhsohrab618@gmail.com').trim(),
+  emailPass: process.env.EMAIL_PASS?.trim(),
+});
+
+const getEmailSendErrorMessage = (error: any) => {
+  if (error?.code === 'EAUTH' || error?.responseCode === 535) {
+    return 'Email authentication failed. Check EMAIL_USER and EMAIL_PASS. Gmail requires an App Password, not the normal account password.';
+  }
+
+  return 'Failed to send verification email.';
+};
+
 async function createGoogleCalendarEvent(eventData: any) {
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
 
@@ -95,8 +108,7 @@ async function startServer() {
         // In a real production app, the table must exist.
       }
 
-      const emailUser = process.env.EMAIL_USER || 'sheikhsohrab618@gmail.com';
-      const emailPass = process.env.EMAIL_PASS;
+      const { emailUser, emailPass } = getEmailCredentials();
 
       // Formatting details for email
       const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
@@ -168,7 +180,7 @@ async function startServer() {
       res.json({ success: true });
     } catch (error) {
       console.error("Error sending verification email:", error);
-      res.status(500).json({ error: "Failed to send verification email." });
+      res.status(500).json({ error: getEmailSendErrorMessage(error) });
     }
   });
 
@@ -221,8 +233,7 @@ async function startServer() {
     }
 
     try {
-      const emailUser = process.env.EMAIL_USER || 'sheikhsohrab618@gmail.com';
-      const emailPass = process.env.EMAIL_PASS;
+      const { emailUser, emailPass } = getEmailCredentials();
 
       if (!emailPass) {
         console.warn("[Schedule API] EMAIL_PASS not configured. Skipping email invitation.");
