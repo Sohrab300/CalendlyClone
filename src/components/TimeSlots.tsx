@@ -153,7 +153,7 @@ export const TimeSlots: React.FC<TimeSlotsProps> = ({
 
   if (slots.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 pr-4">
         <p className="text-gray-500">No available time slots for this date.</p>
       </div>
     );
