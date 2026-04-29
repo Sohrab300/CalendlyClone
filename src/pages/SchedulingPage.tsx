@@ -339,7 +339,9 @@ export default function SchedulingPage() {
         setView("verification");
       } catch (err: any) {
         console.error("Verification error:", err);
-        alert(err.message || "Failed to send verification code. Please try again.");
+        alert(
+          err.message || "Failed to send verification code. Please try again.",
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -545,7 +547,7 @@ export default function SchedulingPage() {
     <div className="min-h-screen flex items-center justify-center p-0 md:p-4 lg:p-8 bg-slate-50">
       <motion.div
         layout
-        className="bg-white rounded-none md:rounded-xl shadow-2xl shadow-slate-200 border-none md:border border-slate-200 w-full max-w-5xl min-h-screen md:min-h-[750px] flex flex-col lg:flex-row overflow-hidden relative"
+        className="bg-[#fafafa] rounded-none md:rounded-sm shadow-2xl shadow-slate-200 border-none md:border border-slate-200 w-full max-w-5xl min-h-screen md:min-h-[750px] flex flex-col lg:flex-row overflow-hidden relative"
       >
         <AnimatePresence mode="wait">
           {view === "success" ? (
@@ -562,6 +564,7 @@ export default function SchedulingPage() {
                 timezone={timezone}
                 is24Hour={is24Hour}
                 hostProfile={hostProfile}
+                onCookieSettingsClick={() => setIsCookieSettingsOpen(true)}
               />
             </motion.div>
           ) : view === "verification" ? (
@@ -716,7 +719,7 @@ export default function SchedulingPage() {
                           </div>
                         )}
 
-                        <div className="p-4 md:p-0 md:pt-24 h-[700px]">
+                        <div className="py-4 md:p-0 md:pt-24 flex flex-col min-h-0">
                           <div className="hidden md:block mb-6">
                             <h3 className="text-slate-800 font-medium">
                               {format(selectedDate, "EEEE, MMMM d")}

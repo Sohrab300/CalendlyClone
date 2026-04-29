@@ -60,7 +60,7 @@ export const EventInfo: React.FC<EventInfoProps> = ({
           <img
             src={brandLogo}
             alt={hostName}
-            className="w-[50%] h-[50%] md:w-[65%] md:h-[65%] object-contain bg-white p-2"
+            className="w-[50%] h-[50%] md:w-[30%] md:h-[30%] lg:w-[65%] lg:h-[65%] object-contain bg-white p-2"
             referrerPolicy="no-referrer"
           />
         </div>

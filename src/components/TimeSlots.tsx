@@ -73,7 +73,7 @@ export const TimeSlots: React.FC<TimeSlotsProps> = ({
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar pb-10 pr-4">
+    <div className="w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar pb-10 px-4 md:pr-4">
       <div className="space-y-3 max-w-sm mx-auto md:mx-0">
         {slots.map((slot) => {
           const isSelected = selectedTime === slot.label;
