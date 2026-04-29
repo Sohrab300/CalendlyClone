@@ -200,7 +200,9 @@ export const SettingsView: React.FC<{
 
   const loadEvents = async () => {
     try {
-      const data = await availabilityService.getEventTypes();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const data = await availabilityService.getEventTypes(user.id);
       setEvents(data);
     } catch (err) {
       console.error('Error loading events:', err);
