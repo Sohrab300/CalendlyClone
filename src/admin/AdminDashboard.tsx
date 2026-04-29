@@ -50,6 +50,25 @@ export default function AdminDashboard() {
         />
       )}
       mainClassName="p-8"
+      rightPanel={(
+        <AnimatePresence>
+          {dashboard.isSidebarOpen && (
+            <CreateEventSidebar
+              isOpen={dashboard.isSidebarOpen}
+              onClose={() => dashboard.setIsSidebarOpen(false)}
+              eventName={dashboard.newEventName}
+              setEventName={dashboard.setNewEventName}
+              eventColor={dashboard.newEventColor}
+              setEventColor={dashboard.setNewEventColor}
+              onCreate={dashboard.handleCreateEvent}
+              schedules={dashboard.schedules}
+              editingEvent={dashboard.editingEvent}
+              profile={dashboard.profile}
+              onNavigateToAvailability={dashboard.navigateToAvailability}
+            />
+          )}
+        </AnimatePresence>
+      )}
     >
       {dashboard.sidebarTab === 'Scheduling' ? (
         <SchedulingView
@@ -85,23 +104,6 @@ export default function AdminDashboard() {
         onDelete={dashboard.handleDelete}
       />
 
-      <AnimatePresence>
-        {dashboard.isSidebarOpen && (
-          <CreateEventSidebar
-            isOpen={dashboard.isSidebarOpen}
-            onClose={() => dashboard.setIsSidebarOpen(false)}
-            eventName={dashboard.newEventName}
-            setEventName={dashboard.setNewEventName}
-            eventColor={dashboard.newEventColor}
-            setEventColor={dashboard.setNewEventColor}
-            onCreate={dashboard.handleCreateEvent}
-            schedules={dashboard.schedules}
-            editingEvent={dashboard.editingEvent}
-            profile={dashboard.profile}
-            onNavigateToAvailability={dashboard.navigateToAvailability}
-          />
-        )}
-      </AnimatePresence>
     </AdminShell>
   );
 }

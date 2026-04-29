@@ -7,6 +7,7 @@ interface AdminShellProps {
   children: React.ReactNode;
   contentClassName?: string;
   mainClassName?: string;
+  rightPanel?: React.ReactNode;
 }
 
 export const AdminShell: React.FC<AdminShellProps> = ({
@@ -15,6 +16,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
   children,
   contentClassName,
   mainClassName,
+  rightPanel,
 }) => (
   <div className="flex h-screen overflow-hidden bg-white font-sans text-slate-900 relative">
     {sidebar}
@@ -25,5 +27,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
         {children}
       </main>
     </div>
+
+    {rightPanel}
   </div>
 );
