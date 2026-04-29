@@ -33,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCreateClick, activeTab, onTa
   return (
     <div 
       className={cn(
-        "h-screen bg-white border-r border-slate-200 flex flex-col transition-all duration-300 relative",
+        "h-screen shrink-0 bg-white border-r border-slate-200 flex flex-col transition-all duration-300 relative",
         isCollapsed ? "w-20" : "w-64"
       )}
     >
