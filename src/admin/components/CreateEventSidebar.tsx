@@ -88,6 +88,17 @@ import {
 import { SidebarPanel } from "./create-event-sidebar/SidebarPanel";
 import type { CreateEventSidebarProps } from "./create-event-sidebar/types";
 
+const EVENT_SIDEBAR_WIDTH = 400;
+const DATE_RANGE_PICKER_WIDTH = 640;
+const DATE_RANGE_PICKER_HEIGHT = 417;
+const DATE_RANGE_PICKER_SIDEBAR_OVERLAP = 260;
+
+const formatCalendarDateValue = (date: Date) => format(date, "yyyy-MM-dd");
+const parseCalendarDateValue = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
   isOpen,
   onClose,
@@ -436,39 +447,75 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
     React.useState(false);
   const [hoverDate, setHoverDate] = React.useState<Date | null>(null);
   const [viewDate, setViewDate] = React.useState(new Date());
-  const [datePickerTop, setDatePickerTop] = React.useState(0);
+  const [datePickerPosition, setDatePickerPosition] = React.useState({
+    top: 16,
+    left: 16,
+  });
   const datePickerRef = React.useRef<HTMLDivElement>(null);
   const datePickerTriggerRef = React.useRef<HTMLButtonElement>(null);
+
+  const updateDatePickerPosition = React.useCallback(() => {
+    const trigger = datePickerTriggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const dashboardSidebarBoundary = window.innerWidth - EVENT_SIDEBAR_WIDTH;
+    const centeredLeft =
+      dashboardSidebarBoundary - DATE_RANGE_PICKER_SIDEBAR_OVERLAP;
+    const left = Math.min(
+      Math.max(16, centeredLeft),
+      window.innerWidth - DATE_RANGE_PICKER_WIDTH - 16,
+    );
+    const maxTop = Math.max(
+      8,
+      window.innerHeight - DATE_RANGE_PICKER_HEIGHT - 8,
+    );
+    const top = Math.min(Math.max(8, rect.top - 190), maxTop);
+
+    setDatePickerPosition({ top, left });
+  }, []);
 
   React.useEffect(() => {
     if (isFixedDatePickerOpen) {
       setTempDateRangeStart(dateRangeStart);
       setTempDateRangeEnd(dateRangeEnd);
       if (dateRangeStart) {
-        setViewDate(startOfMonth(new Date(dateRangeStart)));
+        setViewDate(startOfMonth(parseCalendarDateValue(dateRangeStart)));
       } else {
         setViewDate(startOfMonth(new Date()));
       }
 
-      if (datePickerTriggerRef.current) {
-        const rect = datePickerTriggerRef.current.getBoundingClientRect();
-        setDatePickerTop(rect.top);
-      }
+      updateDatePickerPosition();
     }
-  }, [isFixedDatePickerOpen, dateRangeStart, dateRangeEnd]);
+  }, [
+    isFixedDatePickerOpen,
+    dateRangeStart,
+    dateRangeEnd,
+    updateDatePickerPosition,
+  ]);
 
   React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        datePickerRef.current &&
-        !datePickerRef.current.contains(event.target as Node)
-      ) {
+    if (!isFixedDatePickerOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      const isInPicker = datePickerRef.current?.contains(target);
+      const isTrigger = datePickerTriggerRef.current?.contains(target);
+
+      if (!isInPicker && !isTrigger) {
         setIsFixedDatePickerOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    const handleWindowResize = () => updateDatePickerPosition();
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("resize", handleWindowResize);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("resize", handleWindowResize);
+    };
+  }, [isFixedDatePickerOpen, updateDatePickerPosition]);
 
   React.useEffect(() => {
     if (selectedScheduleId) {
@@ -548,18 +595,23 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
   ];
 
   const handleDateClick = (day: Date) => {
-    const start = tempDateRangeStart ? new Date(tempDateRangeStart) : null;
-    const end = tempDateRangeEnd ? new Date(tempDateRangeEnd) : null;
+    const start = tempDateRangeStart
+      ? parseCalendarDateValue(tempDateRangeStart)
+      : null;
+    const end = tempDateRangeEnd
+      ? parseCalendarDateValue(tempDateRangeEnd)
+      : null;
+    const selectedDay = startOfDay(day);
 
     if (!start || (start && end)) {
-      setTempDateRangeStart(day.toISOString());
+      setTempDateRangeStart(formatCalendarDateValue(selectedDay));
       setTempDateRangeEnd("");
     } else {
-      if (day < start) {
-        setTempDateRangeEnd(start.toISOString());
-        setTempDateRangeStart(day.toISOString());
+      if (selectedDay < start) {
+        setTempDateRangeEnd(formatCalendarDateValue(start));
+        setTempDateRangeStart(formatCalendarDateValue(selectedDay));
       } else {
-        setTempDateRangeEnd(day.toISOString());
+        setTempDateRangeEnd(formatCalendarDateValue(selectedDay));
       }
     }
   };
@@ -662,58 +714,30 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
     const endDateView = endOfWeek(monthEnd);
     const days = eachDayOfInterval({ start: startDateView, end: endDateView });
 
-    const start = tempDateRangeStart ? new Date(tempDateRangeStart) : null;
-    const end = tempDateRangeEnd ? new Date(tempDateRangeEnd) : null;
-    const isFirstMonth = isSameMonth(monthDate, new Date());
+    const start = tempDateRangeStart
+      ? parseCalendarDateValue(tempDateRangeStart)
+      : null;
+    const end = tempDateRangeEnd
+      ? parseCalendarDateValue(tempDateRangeEnd)
+      : null;
 
     return (
-      <div className="w-72">
-        <div className="flex items-center justify-between mb-6 px-2">
-          <button
-            type="button"
-            disabled={isFirstMonth}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isFirstMonth) setViewDate(subMonths(viewDate, 1));
-            }}
-            className={cn(
-              "p-1.5 rounded-full transition-colors",
-              isFirstMonth
-                ? "opacity-0 cursor-default"
-                : "hover:bg-slate-100 text-slate-600",
-            )}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="font-bold text-slate-900 text-base">
-            {format(monthDate, "MMMM yyyy")}
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setViewDate(addMonths(viewDate, 1));
-            }}
-            className="p-1.5 hover:bg-slate-100 rounded-full transition-colors text-slate-600"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+      <div className="w-full">
+        <div className="mb-6 text-center text-[16px] font-bold leading-none text-[#0b1f3a]">
+          {format(monthDate, "MMMM yyyy")}
         </div>
         <div className="grid grid-cols-7 mb-2">
           {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => (
             <div
               key={d}
-              className="text-[10px] font-bold text-slate-400 text-center py-2"
+              className="text-[10px] font-semibold text-[#536b8c] text-center"
             >
               {d}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-y-1">
+        <div className="grid grid-cols-7 gap-y-4">
           {days.map((day, i) => {
-            const isSelectedStart = start && isSameDay(day, start);
-            const isSelectedEnd = end && isSameDay(day, end);
-
             let effectiveStart = start;
             let effectiveEnd = end;
             if (start && !end && hoverDate) {
@@ -748,9 +772,9 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
               <div
                 key={i}
                 className={cn(
-                  "relative h-10 flex items-center justify-center text-sm font-medium",
+                  "relative h-7 flex items-center justify-center text-[14px] font-bold",
                   !isCurrentMonth && "opacity-0 pointer-events-none",
-                  isPastDate && "text-slate-300 pointer-events-none",
+                  isPastDate && "pointer-events-none",
                 )}
                 onClick={(e) => {
                   if (isPastDate) return;
@@ -763,7 +787,7 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                 onMouseLeave={() => setHoverDate(null)}
               >
                 {isInRange && !isEffectiveStart && !isEffectiveEnd && (
-                  <div className="absolute inset-y-1 inset-x-0 bg-blue-50 z-0" />
+                  <div className="absolute -inset-y-1 inset-x-0 bg-blue-50 h-[38px] z-0" />
                 )}
                 {isEffectiveStart &&
                   effectiveEnd &&
@@ -778,12 +802,14 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
 
                 <div
                   className={cn(
-                    "w-9 h-9 flex items-center justify-center rounded-full transition-all relative z-10 cursor-pointer",
+                    "w-10 h-10 flex items-center justify-center rounded-full transition-all relative z-10 cursor-pointer",
                     isSelected
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-100"
+                      ? "bg-[#006bff] text-white shadow-md shadow-blue-100"
                       : isTodayDate
-                        ? "bg-slate-100 text-slate-900"
-                        : "text-slate-700 hover:bg-slate-50",
+                        ? "bg-slate-100 text-[#0b1f3a]"
+                        : isPastDate
+                          ? "text-[#a9bdd3]"
+                          : "text-[#0b1f3a] hover:bg-slate-50",
                   )}
                 >
                   {format(day, "d")}
@@ -1336,7 +1362,7 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                                                 )}
                                               >
                                                 {dateRangeStart && dateRangeEnd
-                                                  ? `${format(new Date(dateRangeStart), "MMM d")} - ${format(new Date(dateRangeEnd), "MMM d, yyyy")}`
+                                                  ? `${format(parseCalendarDateValue(dateRangeStart), "MMM d")} - ${format(parseCalendarDateValue(dateRangeEnd), "MMM d, yyyy")}`
                                                   : "Select date range"}
                                               </span>
                                             </button>
@@ -3994,19 +4020,43 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
         {isFixedDatePickerOpen && (
           <motion.div
             ref={datePickerRef}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            style={{ top: datePickerTop, right: 416 }}
-            className="fixed bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] p-8 flex flex-col gap-8 min-w-[650px]"
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            style={{
+              top: datePickerPosition.top,
+              left: datePickerPosition.left,
+              width: DATE_RANGE_PICKER_WIDTH,
+            }}
+            className="fixed bg-white border border-[#c8d8ea] rounded-lg shadow-2xl z-[120] px-6 py-5 flex flex-col justify-between"
           >
-            <div className="flex flex-col sm:flex-row gap-12">
+            <button
+              type="button"
+              disabled={isSameMonth(viewDate, new Date())}
+              onClick={() => setViewDate(subMonths(viewDate, 1))}
+              className={cn(
+                "absolute left-7 top-4 p-1.5 rounded-full transition-colors",
+                isSameMonth(viewDate, new Date())
+                  ? "text-[#a9bdd3] cursor-default"
+                  : "text-[#0b1f3a] hover:bg-slate-100",
+              )}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewDate(addMonths(viewDate, 1))}
+              className="absolute right-7 top-4 p-1.5 rounded-full text-[#0b1f3a] hover:bg-slate-100 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            <div className="flex gap-8 mb-6">
               {renderCalendar(viewDate)}
-              <div className="hidden sm:block border-l border-slate-100" />
               {renderCalendar(addMonths(viewDate, 1))}
             </div>
 
-            <div className="flex items-center justify-end gap-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-center gap-8 mt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -4014,7 +4064,7 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                   setTempDateRangeEnd(dateRangeEnd);
                   setIsFixedDatePickerOpen(false);
                 }}
-                className="px-6 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
+                className="px-5 py-2 text-[14px] font-bold text-[#0b1f3a] hover:bg-slate-50 rounded-full transition-colors"
               >
                 Cancel
               </button>
@@ -4027,10 +4077,10 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                   setIsFixedDatePickerOpen(false);
                 }}
                 className={cn(
-                  "px-8 py-2.5 text-sm font-bold rounded-full transition-all",
+                  "min-w-[90px] px-7 py-2.5 text-[14px] font-bold rounded-full transition-all",
                   tempDateRangeStart && tempDateRangeEnd
-                    ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-100"
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed",
+                    ? "bg-[#006bff] text-white hover:bg-blue-700 shadow-md shadow-blue-100"
+                    : "bg-[#e5eef8] text-[#a9bdd3] cursor-not-allowed",
                 )}
               >
                 Apply

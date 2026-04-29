@@ -2,7 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Loader2, Globe, ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
-import { format, addMinutes, parseISO } from "date-fns";
+import { format, addMinutes, parseISO, startOfMonth, startOfToday } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 import {
   useParams,
@@ -30,6 +30,11 @@ import {
 } from "../services/availabilityService";
 
 type ViewState = "calendar" | "details" | "success" | "verification";
+
+const parseCalendarDateValue = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
 
 export default function SchedulingPage() {
   const { userSlug, eventSlug } = useParams<{
@@ -254,8 +259,8 @@ export default function SchedulingPage() {
       event.date_range_start &&
       event.date_range_end
     ) {
-      const start = new Date(event.date_range_start);
-      const end = new Date(event.date_range_end);
+      const start = parseCalendarDateValue(event.date_range_start);
+      const end = parseCalendarDateValue(event.date_range_end);
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
       if (date < start || date > end) return false;
@@ -314,6 +319,23 @@ export default function SchedulingPage() {
     setSelectedDate(null);
     setSelectedTime(null);
   };
+
+  const calendarStartMonth = (() => {
+    const today = startOfToday();
+
+    if (
+      event.date_range_kind === "range" &&
+      event.date_range_start &&
+      event.date_range_end
+    ) {
+      const rangeStart = startOfMonth(
+        parseCalendarDateValue(event.date_range_start),
+      );
+      return rangeStart > today ? rangeStart : startOfMonth(today);
+    }
+
+    return startOfMonth(today);
+  })();
 
   const handleBookingSubmit = async (data: any) => {
     if (isSubmitting) return; // Guard against multiple submissions
@@ -647,6 +669,8 @@ export default function SchedulingPage() {
                           onFormatToggle={setIs24Hour}
                           isDateAvailable={isDateAvailable}
                           isTimezoneLocked={event.timezone_display === "lock"}
+                          initialMonth={calendarStartMonth}
+                          minMonth={calendarStartMonth}
                         />
                       </div>
                     </div>

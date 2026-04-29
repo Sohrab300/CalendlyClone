@@ -26,6 +26,8 @@ interface CalendarProps {
   onFormatToggle: (is24Hour: boolean) => void;
   isDateAvailable?: (date: Date) => boolean;
   isTimezoneLocked?: boolean;
+  initialMonth?: Date;
+  minMonth?: Date;
 }
 
 export const Calendar: React.FC<CalendarProps> = ({
@@ -37,11 +39,16 @@ export const Calendar: React.FC<CalendarProps> = ({
   onFormatToggle,
   isDateAvailable,
   isTimezoneLocked,
+  initialMonth,
+  minMonth,
 }) => {
-  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+  const [currentMonth, setCurrentMonth] = React.useState(() =>
+    startOfMonth(initialMonth || new Date()),
+  );
   const [isSelectorOpen, setIsSelectorOpen] = React.useState(false);
   const [now, setNow] = React.useState(new Date());
   const today = startOfToday();
+  const minNavigableMonth = startOfMonth(minMonth || new Date());
 
   // Update the clock every minute
   React.useEffect(() => {
@@ -50,6 +57,10 @@ export const Calendar: React.FC<CalendarProps> = ({
     }, 10000); // Check every 10 seconds for better responsiveness
     return () => clearInterval(timer);
   }, []);
+
+  React.useEffect(() => {
+    setCurrentMonth(startOfMonth(initialMonth || new Date()));
+  }, [initialMonth]);
 
   const getTimezoneLabel = (tz: string) => {
     const timeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -72,7 +83,9 @@ export const Calendar: React.FC<CalendarProps> = ({
   };
 
   const renderHeader = () => {
-    const isFirstMonth = isSameMonth(currentMonth, new Date());
+    const isFirstMonth =
+      isSameMonth(currentMonth, minNavigableMonth) ||
+      isBefore(currentMonth, minNavigableMonth);
     return (
       <div className="flex items-center justify-center gap-6 mb-8 px-4">
         <button
