@@ -40,36 +40,38 @@ export const CustomSelect: React.FC<{
 
   return (
     <div className={cn('space-y-2.5 relative', className)} ref={dropdownRef}>
-      <label className="flex items-center gap-1.5 text-sm font-bold text-[#1a1a1a]">
-        {label}
-        {showInfo && <Info className="w-3.5 h-3.5 text-[#94a3b8] cursor-help" />}
-      </label>
+      {label && (
+        <label className="flex items-center gap-1.5 text-[15px] leading-none font-bold text-[#0b1f3a]">
+          {label}
+          {showInfo && <Info className="w-4 h-4 text-[#536b8c] cursor-help" />}
+        </label>
+      )}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'w-full px-4 py-3 bg-white border rounded-lg text-sm text-[#334155] flex items-center justify-between transition-all outline-none',
-          isOpen ? 'border-[#006bff] ring-[1px] ring-[#006bff]' : 'border-[#e2e8f0] hover:border-[#cbd5e1]'
+          'w-full px-4 py-3 bg-white border rounded-lg text-[16px] leading-none text-[#263a55] flex items-center justify-between transition-all outline-none',
+          isOpen ? 'border-[#2f6df6] ring-[1px] ring-[#2f6df6]' : 'border-[#b7c7da] hover:border-[#8fa3bd]'
         )}
       >
         <span className="truncate">{displayValue}</span>
-        {isOpen ? <ChevronUp className="w-4 h-4 text-[#006bff]" /> : <ChevronDown className="w-4 h-4 text-[#94a3b8]" />}
+        {isOpen ? <ChevronUp className="w-5 h-5 text-[#2f6df6]" /> : <ChevronDown className="w-5 h-5 text-[#2f6df6]" />}
       </button>
 
       {isOpen && (
         <div className={cn(
-          'absolute inset-x-0 z-50 mt-1 bg-white border border-[#e2e8f0] rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100',
+          'absolute inset-x-0 z-50 mt-1 bg-white border border-[#b7c7da] rounded-[10px] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100',
           (isTimezone || label === 'Country') ? 'bottom-full mb-2' : 'top-full'
         )}>
           {hasSearch && (
             <div className="p-3 border-bottom border-[#f1f5f9]">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#536b8c]" />
                 <input
                   type="text"
                   placeholder="Search..."
                   autoFocus
-                  className="w-full pl-10 pr-4 py-2 bg-white border border-[#006bff] rounded-lg text-sm focus:outline-none ring-1 ring-blue-100"
+                  className="w-full pl-10 pr-4 py-2 bg-white border border-[#2f6df6] rounded-lg text-sm focus:outline-none ring-1 ring-blue-100"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -79,7 +81,7 @@ export const CustomSelect: React.FC<{
           <div className={cn('overflow-y-auto', (isTimezone || label === 'Country') ? 'max-h-[300px]' : 'max-h-[250px]')}>
             {isTimezone && <p className="text-[11px] font-bold text-[#b2b2b2] px-4 py-2 uppercase tracking-tight">Time Zone</p>}
             {filteredOptions.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-slate-500 italic">No results found</div>
+              <div className="px-4 py-3 text-sm text-[#536b8c] italic">No results found</div>
             ) : filteredOptions.map((opt, i) => {
               const optVal = typeof opt === 'string' ? opt : opt.name || opt;
               const optLabel = typeof opt === 'string' ? opt : opt.label;
@@ -95,13 +97,13 @@ export const CustomSelect: React.FC<{
                   }}
                   className={cn(
                     'w-full px-4 py-2.5 text-left text-[14px] flex items-center justify-between hover:bg-[#f8fafc] transition-colors',
-                    isSelected ? (isTimezone ? 'bg-[#006bff] text-white' : 'text-[#1a1a1a]') : 'text-[#1a1a1a]'
+                    isSelected ? (isTimezone ? 'bg-[#2f6df6] text-white' : 'text-[#0b1f3a]') : 'text-[#0b1f3a]'
                   )}
                 >
                   <span>{optLabel}</span>
                   <div className="flex items-center gap-4">
                     {isTimezone && <span className={cn(isSelected ? 'text-white' : 'text-[#64748b]')}>{getCurrentTime(opt.offset)}</span>}
-                    {isSelected && !isTimezone && <Check className="w-4 h-4 text-[#006bff]" />}
+                    {isSelected && !isTimezone && <Check className="w-4 h-4 text-[#2f6df6]" />}
                   </div>
                 </button>
               );
