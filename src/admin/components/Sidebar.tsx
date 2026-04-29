@@ -3,16 +3,15 @@ import {
   Calendar, 
   Users, 
   Clock, 
-  Zap, 
-  LayoutGrid, 
-  Route, 
   Plus,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  LogOut,
   Link as LinkIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useAdminLogout } from '../hooks/useAdminLogout';
 
 interface SidebarProps {
   onCreateClick?: () => void;
@@ -22,6 +21,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ onCreateClick, activeTab, onTabChange }) => {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const handleLogout = useAdminLogout();
 
   const menuItems = [
     { icon: LinkIcon, label: 'Scheduling' },
@@ -92,6 +92,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCreateClick, activeTab, onTa
           </button>
         ))}
       </nav>
+
+      <div className="px-2 py-4 border-t border-slate-100">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
+        >
+          <LogOut className="w-5 h-5 shrink-0 text-slate-400" />
+          {!isCollapsed && <span>Logout</span>}
+        </button>
+      </div>
     </div>
   );
 };

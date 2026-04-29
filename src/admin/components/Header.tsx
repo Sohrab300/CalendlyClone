@@ -1,8 +1,7 @@
 import React from 'react';
-import { User, Plus, ChevronDown, Bell, Star, Link2, Settings2, ExternalLink, LogOut, ChevronRight, UserPlus } from 'lucide-react';
+import { User, ChevronDown, Bell, Star, Link2, Settings2, LogOut } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useAdminLogout } from '../hooks/useAdminLogout';
 
 interface HeaderProps {
   onNavigateToSettings: (tab?: string) => void;
@@ -12,8 +11,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onNavigateToSettings, profile }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
+  const handleLogout = useAdminLogout();
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -24,15 +22,6 @@ export const Header: React.FC<HeaderProps> = ({ onNavigateToSettings, profile })
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      navigate('/admin/login');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-end px-8 gap-6 sticky top-0 z-[100]">

@@ -10,6 +10,7 @@ import { ContactsView } from './components/ContactsView';
 import { SettingsView } from './components/SettingsView';
 import { SchedulingView } from './components/SchedulingView';
 import { SelectedEventsToolbar } from './components/SelectedEventsToolbar';
+import { AdminShell } from './components/AdminShell';
 import { useAdminDashboard } from './hooks/useAdminDashboard';
 
 export default function AdminDashboard() {
@@ -34,49 +35,49 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white font-sans text-slate-900 relative">
-      <Sidebar
-        activeTab={dashboard.sidebarTab}
-        onTabChange={dashboard.setSidebarTab}
-        onCreateClick={dashboard.handleOpenCreate}
-      />
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+    <AdminShell
+      sidebar={(
+        <Sidebar
+          activeTab={dashboard.sidebarTab}
+          onTabChange={dashboard.setSidebarTab}
+          onCreateClick={dashboard.handleOpenCreate}
+        />
+      )}
+      header={(
         <Header
           profile={dashboard.profile}
           onNavigateToSettings={dashboard.navigateToSettings}
         />
-
-        <main className="flex-1 min-h-0 overflow-y-auto p-8">
-          {dashboard.sidebarTab === 'Scheduling' ? (
-            <SchedulingView
-              activeTab={dashboard.activeTab}
-              events={dashboard.events}
-              isSidebarOpen={dashboard.isSidebarOpen}
-              newEventColor={dashboard.newEventColor}
-              newEventName={dashboard.newEventName}
-              profile={dashboard.profile}
-              selectedIds={dashboard.selectedIds}
-              onCopyLink={dashboard.handleCopyLink}
-              onCreateClick={() => dashboard.setIsSidebarOpen(true)}
-              onEditEvent={dashboard.handleEditEvent}
-              onTabChange={dashboard.setActiveTab}
-              onToggleSelection={dashboard.toggleSelection}
-              onViewLandingPage={dashboard.handleViewLandingPage}
-            />
-          ) : dashboard.sidebarTab === 'Meetings' ? (
-            <MeetingsView />
-          ) : dashboard.sidebarTab === 'Availability' ? (
-            <AvailabilityView initialScheduleId={dashboard.targetScheduleId} />
-          ) : dashboard.sidebarTab === 'Contacts' ? (
-            <ContactsView />
-          ) : (
-            <div className="max-w-5xl mx-auto flex flex-col items-center justify-center min-h-[400px] text-slate-400">
-              <p className="text-lg font-medium">{dashboard.sidebarTab} content coming soon</p>
-            </div>
-          )}
-        </main>
-      </div>
+      )}
+      mainClassName="p-8"
+    >
+      {dashboard.sidebarTab === 'Scheduling' ? (
+        <SchedulingView
+          activeTab={dashboard.activeTab}
+          events={dashboard.events}
+          isSidebarOpen={dashboard.isSidebarOpen}
+          newEventColor={dashboard.newEventColor}
+          newEventName={dashboard.newEventName}
+          profile={dashboard.profile}
+          selectedIds={dashboard.selectedIds}
+          onCopyLink={dashboard.handleCopyLink}
+          onCreateClick={() => dashboard.setIsSidebarOpen(true)}
+          onEditEvent={dashboard.handleEditEvent}
+          onTabChange={dashboard.setActiveTab}
+          onToggleSelection={dashboard.toggleSelection}
+          onViewLandingPage={dashboard.handleViewLandingPage}
+        />
+      ) : dashboard.sidebarTab === 'Meetings' ? (
+        <MeetingsView />
+      ) : dashboard.sidebarTab === 'Availability' ? (
+        <AvailabilityView initialScheduleId={dashboard.targetScheduleId} />
+      ) : dashboard.sidebarTab === 'Contacts' ? (
+        <ContactsView />
+      ) : (
+        <div className="max-w-5xl mx-auto flex flex-col items-center justify-center min-h-[400px] text-slate-400">
+          <p className="text-lg font-medium">{dashboard.sidebarTab} content coming soon</p>
+        </div>
+      )}
 
       <SelectedEventsToolbar
         selectedCount={dashboard.selectedIds.size}
@@ -101,6 +102,6 @@ export default function AdminDashboard() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </AdminShell>
   );
 }
