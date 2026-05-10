@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useAdminLogout } from '../../hooks/useAdminLogout';
+import { BrandLogo } from '../../../components/BrandLogo';
 
 interface SettingsSidebarProps {
   activeTab: string;
@@ -31,10 +32,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ activeTab, onB
   return (
     <div className="w-[280px] border-r border-[#f1f5f9] flex flex-col p-6 overflow-y-auto bg-white shrink-0">
       <div onClick={onBack} className="flex items-center gap-2 mb-8 cursor-pointer group">
-        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center transition-transform group-hover:scale-105">
-          <span className="text-white font-bold text-xl">C</span>
-        </div>
-        <span className="text-xl font-bold text-blue-600">Calendly</span>
+        <BrandLogo iconClassName="h-8 w-8 transition-transform group-hover:scale-105" />
       </div>
 
       <button
