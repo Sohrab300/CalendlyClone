@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAdminLogout } from "../hooks/useAdminLogout";
+import { BrandLogo } from "../../components/BrandLogo";
 
 interface SidebarProps {
   onCreateClick?: () => void;
@@ -46,12 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => onTabChange("Scheduling")}
           className="flex items-center gap-2 cursor-pointer group"
         >
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
-            <span className="text-white font-bold text-xl">C</span>
-          </div>
-          {!isCollapsed && (
-            <span className="text-xl font-bold text-blue-600">Calendly</span>
-          )}
+          <BrandLogo compact={isCollapsed} iconClassName="h-8 w-8 group-hover:scale-105 transition-transform" />
         </div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}

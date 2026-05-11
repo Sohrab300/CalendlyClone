@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { BrandLogo } from '../components/BrandLogo';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -70,10 +71,7 @@ export const LoginPage: React.FC = () => {
       {/* Logo */}
       <div className="mb-12 md:mb-20">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-10 h-10 bg-[#006bff] rounded-lg flex items-center justify-center">
-             <div className="w-6 h-6 border-4 border-white rounded-full border-t-transparent -rotate-45" />
-          </div>
-          <span className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">Calendly</span>
+          <BrandLogo iconClassName="h-10 w-10" textClassName="text-2xl md:text-3xl" />
         </div>
       </div>
 
