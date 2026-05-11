@@ -10,6 +10,7 @@ import {
   Server,
 } from "lucide-react";
 import { MarketingHeader } from "../components/MarketingHeader";
+import { Footer } from "../components/Footer";
 
 const githubUrl = "https://github.com/Sohrab300/CalendlyClone";
 
@@ -150,6 +151,7 @@ export default function ProductPage() {
           </div>
         </div>
       </section>
+      <Footer />
     </main>
   );
 }

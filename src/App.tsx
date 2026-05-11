@@ -12,6 +12,8 @@ import HomePage from './pages/HomePage';
 import ProductPage from './pages/ProductPage';
 import FeaturesPage from './pages/FeaturesPage';
 import CaseStudiesPage from './pages/CaseStudiesPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import SignupPage from './pages/SignupPage';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider } from './context/AuthContext';
@@ -28,6 +30,8 @@ export default function App() {
           <Route path="/product" element={<ProductPage />} />
           <Route path="/features" element={<FeaturesPage />} />
           <Route path="/case-studies" element={<CaseStudiesPage />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
           <Route path="/admin/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route 

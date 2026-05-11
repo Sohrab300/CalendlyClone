@@ -12,6 +12,7 @@ import {
   Video,
 } from "lucide-react";
 import { MarketingHeader } from "../components/MarketingHeader";
+import { Footer } from "../components/Footer";
 
 const featureCards = [
   {
@@ -126,6 +127,7 @@ export default function FeaturesPage() {
           </div>
         </div>
       </section>
+      <Footer />
     </main>
   );
 }

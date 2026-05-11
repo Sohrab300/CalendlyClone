@@ -2,6 +2,7 @@ import React from "react";
 import { motion, useScroll, useSpring } from "motion/react";
 import { CalendarCog, Database, Flag, GitBranch, Timer } from "lucide-react";
 import { MarketingHeader } from "../components/MarketingHeader";
+import { Footer } from "../components/Footer";
 
 const timelineItems = [
   {
@@ -121,6 +122,7 @@ export default function CaseStudiesPage() {
           </div>
         </div>
       </section>
+      <Footer />
     </main>
   );
 }
