@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { getValidatedSession, supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
@@ -14,6 +14,20 @@ export const LoginPage: React.FC = () => {
   const location = useLocation();
 
   const from = (location.state as any)?.from?.pathname || '/admin';
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getValidatedSession().then(({ session, user }) => {
+      if (isMounted && session && user) {
+        navigate(from, { replace: true });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [from, navigate]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

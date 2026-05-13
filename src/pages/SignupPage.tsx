@@ -18,6 +18,19 @@ import { BrandLogo } from "../components/BrandLogo";
 
 type SignupStep = 1 | 2 | 3 | 4;
 
+const hasOAuthCallbackParams = () => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+  return (
+    searchParams.has("code") ||
+    searchParams.has("error") ||
+    hashParams.has("access_token") ||
+    hashParams.has("refresh_token") ||
+    hashParams.has("error")
+  );
+};
+
 export default function SignupPage() {
   const [step, setStep] = useState<SignupStep>(1);
   const [loading, setLoading] = useState(false);
@@ -32,6 +45,7 @@ export default function SignupPage() {
   // Handle Google OAuth callback for Method 1 and Step 4
   useEffect(() => {
     const handleAuthCallback = async () => {
+      if (!hasOAuthCallbackParams()) return;
       if (authCallbackHandledRef.current) return;
       authCallbackHandledRef.current = true;
 

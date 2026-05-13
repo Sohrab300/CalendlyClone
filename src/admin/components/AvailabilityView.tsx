@@ -247,7 +247,7 @@ export const AvailabilityView: React.FC<{ initialScheduleId?: string | null }> =
         // Create default schedule if none exists
         const { data: newSchedule, error: createError } = await supabase
           .from('schedules')
-          .insert([{ name: 'Working hours (default)', is_active: true }])
+          .insert([{ name: 'Working hours (default)', is_active: true, user_id: userId }])
           .select()
           .single();
 

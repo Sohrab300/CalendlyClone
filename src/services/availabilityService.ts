@@ -1,6 +1,13 @@
-import { supabase } from '../lib/supabase';
-import { addDays, addMinutes, endOfDay, format, parseISO, startOfDay } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { supabase } from "../lib/supabase";
+import {
+  addDays,
+  addMinutes,
+  endOfDay,
+  format,
+  parseISO,
+  startOfDay,
+} from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 export interface TimeSlot {
   id: string;
@@ -46,7 +53,7 @@ export interface Booking {
 export interface CustomQuestion {
   id: string;
   label: string;
-  type: 'text' | 'textarea' | 'radio' | 'checkbox' | 'select' | 'phone';
+  type: "text" | "textarea" | "radio" | "checkbox" | "select" | "phone";
   required: boolean;
   status: boolean;
   options?: string[];
@@ -79,16 +86,16 @@ export interface EventType {
   meeting_limit_count?: number;
   meeting_limit_period?: string;
   time_increment?: number;
-  timezone_display?: 'detect' | 'lock';
-  invitee_detail_type?: 'name_email' | 'first_last_email';
+  timezone_display?: "detect" | "lock";
+  invitee_detail_type?: "name_email" | "first_last_email";
   autofill_enabled?: boolean;
   allow_guests?: boolean;
   questions?: CustomQuestion[];
-  confirmation_type?: 'display' | 'redirect';
+  confirmation_type?: "display" | "redirect";
   confirmation_links?: ConfirmationLink[];
-  date_range_kind?: 'relative' | 'range' | 'indefinite';
+  date_range_kind?: "relative" | "range" | "indefinite";
   date_range_value?: number;
-  date_range_type?: 'calendar_days' | 'weekdays';
+  date_range_type?: "calendar_days" | "days" | "weekdays";
   date_range_start?: string;
   date_range_end?: string;
   minimum_notice?: number; // in hours
@@ -107,12 +114,12 @@ export interface DayAvailability {
 export const availabilityService = {
   async getEventTypes(userId?: string) {
     let query = supabase
-      .from('event_types')
-      .select('*')
-      .order('created_at', { ascending: true });
-    
+      .from("event_types")
+      .select("*")
+      .order("created_at", { ascending: true });
+
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.eq("user_id", userId);
     }
 
     const { data, error } = await query;
@@ -121,9 +128,9 @@ export const availabilityService = {
     return data as EventType[];
   },
 
-  async createEventType(event: Omit<EventType, 'id'> & { user_id?: string }) {
+  async createEventType(event: Omit<EventType, "id"> & { user_id?: string }) {
     const { data, error } = await supabase
-      .from('event_types')
+      .from("event_types")
       .insert([event])
       .select()
       .single();
@@ -133,19 +140,16 @@ export const availabilityService = {
   },
 
   async deleteEventType(id: string) {
-    const { error } = await supabase
-      .from('event_types')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from("event_types").delete().eq("id", id);
 
     if (error) throw error;
   },
 
   async updateEventType(id: string, updates: Partial<EventType>) {
     const { data, error } = await supabase
-      .from('event_types')
+      .from("event_types")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -154,13 +158,10 @@ export const availabilityService = {
   },
 
   async getActiveSchedule(userId?: string) {
-    let query = supabase
-      .from('schedules')
-      .select('*')
-      .eq('is_active', true);
-    
+    let query = supabase.from("schedules").select("*").eq("is_active", true);
+
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.eq("user_id", userId);
     }
 
     const { data, error } = await query.maybeSingle();
@@ -171,20 +172,25 @@ export const availabilityService = {
 
   async getWeeklyHours(scheduleId: string) {
     const { data, error } = await supabase
-      .from('weekly_hours')
-      .select('*')
-      .eq('schedule_id', scheduleId)
-      .order('day_index', { ascending: true });
+      .from("weekly_hours")
+      .select("*")
+      .eq("schedule_id", scheduleId)
+      .order("day_index", { ascending: true });
 
     if (error) throw error;
-    return data as DayAvailability[];
+    return (data || []).map((day) => ({
+      ...day,
+      day_index: Number(day.day_index),
+      enabled: Boolean(day.enabled),
+      slots: Array.isArray(day.slots) ? day.slots : [],
+    })) as DayAvailability[];
   },
 
   async getDateOverrides(scheduleId: string) {
     const { data, error } = await supabase
-      .from('date_overrides')
-      .select('*')
-      .eq('schedule_id', scheduleId);
+      .from("date_overrides")
+      .select("*")
+      .eq("schedule_id", scheduleId);
 
     if (error) throw error;
     return data as DateOverride[];
@@ -195,13 +201,13 @@ export const availabilityService = {
     const end = endOfDay(date).toISOString();
 
     let query = supabase
-      .from('bookings')
-      .select('*')
-      .gte('start_time', start)
-      .lte('start_time', end);
-    
+      .from("bookings")
+      .select("*")
+      .gte("start_time", start)
+      .lte("start_time", end);
+
     if (hostId) {
-      query = query.eq('host_id', hostId);
+      query = query.eq("host_id", hostId);
     }
 
     const { data, error } = await query;
@@ -212,12 +218,12 @@ export const availabilityService = {
 
   async getAllBookings(hostId?: string) {
     let query = supabase
-      .from('bookings')
-      .select('*')
-      .order('start_time', { ascending: true });
-    
+      .from("bookings")
+      .select("*")
+      .order("start_time", { ascending: true });
+
     if (hostId) {
-      query = query.eq('host_id', hostId);
+      query = query.eq("host_id", hostId);
     }
 
     const { data, error } = await query;
@@ -226,9 +232,9 @@ export const availabilityService = {
     return data as Booking[];
   },
 
-  async createBooking(booking: Omit<Booking, 'id'> & { host_id: string }) {
+  async createBooking(booking: Omit<Booking, "id"> & { host_id: string }) {
     const { data, error } = await supabase
-      .from('bookings')
+      .from("bookings")
       .insert([booking])
       .select()
       .single();
@@ -236,12 +242,12 @@ export const availabilityService = {
     if (error) throw error;
     return data;
   },
-  
+
   async updateBooking(id: string, updates: Partial<Booking>) {
     const { data, error } = await supabase
-      .from('bookings')
+      .from("bookings")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -251,12 +257,12 @@ export const availabilityService = {
 
   async getSchedules(userId?: string) {
     let query = supabase
-      .from('schedules')
-      .select('*')
-      .order('created_at', { ascending: true });
-    
+      .from("schedules")
+      .select("*")
+      .order("created_at", { ascending: true });
+
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.eq("user_id", userId);
     }
 
     const { data, error } = await query;
@@ -264,9 +270,13 @@ export const availabilityService = {
     return data;
   },
 
-  async createSchedule(name: string, userId: string, isActive: boolean = false) {
+  async createSchedule(
+    name: string,
+    userId: string,
+    isActive: boolean = false,
+  ) {
     const { data, error } = await supabase
-      .from('schedules')
+      .from("schedules")
       .insert([{ name, user_id: userId, is_active: isActive }])
       .select()
       .single();
@@ -278,20 +288,22 @@ export const availabilityService = {
   async updateWeeklyHours(scheduleId: string, hours: DayAvailability[]) {
     // Usually we delete and re-insert or upsert. Let's assume re-insert for simplicity in this logic
     const { error: deleteError } = await supabase
-      .from('weekly_hours')
+      .from("weekly_hours")
       .delete()
-      .eq('schedule_id', scheduleId);
-    
+      .eq("schedule_id", scheduleId);
+
     if (deleteError) throw deleteError;
 
     const { data, error } = await supabase
-      .from('weekly_hours')
-      .insert(hours.map(h => ({
-        schedule_id: scheduleId,
-        day_index: h.day_index,
-        enabled: h.enabled,
-        slots: h.slots
-      })))
+      .from("weekly_hours")
+      .insert(
+        hours.map((h) => ({
+          schedule_id: scheduleId,
+          day_index: h.day_index,
+          enabled: h.enabled,
+          slots: h.slots,
+        })),
+      )
       .select();
 
     if (error) throw error;
@@ -300,9 +312,9 @@ export const availabilityService = {
 
   async getProfile(username: string) {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('username', username)
+      .from("profiles")
+      .select("*")
+      .eq("username", username)
       .single();
 
     if (error) throw error;
@@ -311,9 +323,9 @@ export const availabilityService = {
 
   async updateProfile(id: string, updates: any) {
     const { data, error } = await supabase
-      .from('profiles')
+      .from("profiles")
       .update(updates)
-      .eq('id', id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -322,94 +334,109 @@ export const availabilityService = {
   },
 
   async seedNewUser(userId: string) {
-    console.log('[Seed] Starting seedNewUser for userId:', userId);
-    
+    console.log("[Seed] Starting seedNewUser for userId:", userId);
+
     try {
       // Check if user already has events
-      console.log('[Seed] Checking for existing events...');
+      console.log("[Seed] Checking for existing events...");
       const events = await this.getEventTypes(userId);
-      console.log('[Seed] Found existing events count:', events.length);
-      
+      console.log("[Seed] Found existing events count:", events.length);
+
       if (events.length > 0) {
-        console.log('[Seed] User already has events, skipping seed.');
+        console.log("[Seed] User already has events, skipping seed.");
         return;
       }
 
       // 1. Get or Create Default Schedule
-      console.log('[Seed] Fetching schedules...');
+      console.log("[Seed] Fetching schedules...");
       const schedules = await this.getSchedules(userId);
-      console.log('[Seed] Found existing schedules count:', schedules.length);
-      
+      console.log("[Seed] Found existing schedules count:", schedules.length);
+
       let targetScheduleId: string;
 
       if (schedules.length > 0) {
         targetScheduleId = schedules[0].id;
-        console.log('[Seed] Using existing schedule:', targetScheduleId);
+        console.log("[Seed] Using existing schedule:", targetScheduleId);
       } else {
-        console.log('[Seed] Creating new default schedule...');
-        const defaultSchedule = await this.createSchedule('Working hours (default)', userId, true);
+        console.log("[Seed] Creating new default schedule...");
+        const defaultSchedule = await this.createSchedule(
+          "Working hours (default)",
+          userId,
+          true,
+        );
         targetScheduleId = defaultSchedule.id;
-        console.log('[Seed] Created schedule:', targetScheduleId);
+        console.log("[Seed] Created schedule:", targetScheduleId);
 
         // 2. Set Default Weekly Hours
-        console.log('[Seed] Setting default weekly hours...');
+        console.log("[Seed] Setting default weekly hours...");
         const DEFAULT_WEEKLY_HOURS = [
           { day_index: 0, enabled: false, slots: [] },
-          { day_index: 1, enabled: true, slots: [{ id: '1', start: '09:00am', end: '05:00pm' }] },
-          { day_index: 2, enabled: true, slots: [{ id: '2', start: '09:00am', end: '05:00pm' }] },
-          { day_index: 3, enabled: true, slots: [{ id: '3', start: '09:00am', end: '05:00pm' }] },
-          { day_index: 4, enabled: true, slots: [{ id: '4', start: '09:00am', end: '05:00pm' }] },
-          { day_index: 5, enabled: true, slots: [{ id: '5', start: '09:00am', end: '05:00pm' }] },
+          {
+            day_index: 1,
+            enabled: true,
+            slots: [{ id: "1", start: "09:00am", end: "05:00pm" }],
+          },
+          {
+            day_index: 2,
+            enabled: true,
+            slots: [{ id: "2", start: "09:00am", end: "05:00pm" }],
+          },
+          {
+            day_index: 3,
+            enabled: true,
+            slots: [{ id: "3", start: "09:00am", end: "05:00pm" }],
+          },
+          {
+            day_index: 4,
+            enabled: true,
+            slots: [{ id: "4", start: "09:00am", end: "05:00pm" }],
+          },
+          {
+            day_index: 5,
+            enabled: true,
+            slots: [{ id: "5", start: "09:00am", end: "05:00pm" }],
+          },
           { day_index: 6, enabled: false, slots: [] },
         ];
         await this.updateWeeklyHours(targetScheduleId, DEFAULT_WEEKLY_HOURS);
-        console.log('[Seed] Weekly hours set.');
+        console.log("[Seed] Weekly hours set.");
       }
 
       // 3. Create Mock Events
-      console.log('[Seed] Creating default events...');
+      console.log("[Seed] Creating default events...");
       const defaultEvents = [
         {
-          title: '30 Minute Meeting',
-          description: 'A quick call to discuss your project requirements and how we can help.',
+          title: "30 Minute Meeting",
+          description:
+            "A quick call to discuss your project requirements and how we can help.",
           duration: 30,
-          slug: '30-minute-meeting',
-          location_type: 'web_conference',
-          location: 'Google Meet',
-          type: 'One-on-One',
-          color: 'bg-indigo-600',
+          slug: "30-minute-meeting",
+          location_type: "web_conference",
+          location: "Google Meet",
+          type: "One-on-One",
+          color: "bg-indigo-600",
           time_increment: 30,
-          timezone_display: 'detect'
+          timezone_display: "detect",
         },
-        {
-          title: '15 Minute Quick Chat',
-          description: 'A brief introduction and overview of our services.',
-          duration: 15,
-          slug: '15-minute-quick-chat',
-          location_type: 'web_conference',
-          location: 'Zoom',
-          type: 'One-on-One',
-          color: 'bg-emerald-500',
-          time_increment: 30,
-          timezone_display: 'detect'
-        }
       ];
 
       for (const event of defaultEvents) {
         // Check if event with this slug already exists for this user
         const { data: existing } = await supabase
-          .from('event_types')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('slug', event.slug)
+          .from("event_types")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("slug", event.slug)
           .maybeSingle();
 
         if (existing) {
-          console.log(`[Seed] Event with slug ${event.slug} already exists, skipping.`);
+          console.log(
+            `[Seed] Event with slug ${event.slug} already exists, skipping.`,
+          );
           continue;
         }
 
-        console.log('[Seed] Creating event:', event.title);
+        console.log("[Seed] Creating event:", event.title);
         await this.createEventType({
           ...event,
           user_id: userId,
@@ -417,22 +444,35 @@ export const availabilityService = {
           link: `${window.location.origin}/placeholder/${event.slug}`,
         });
       }
-      console.log('[Seed] Seeding completed successfully for userId:', userId);
+      console.log("[Seed] Seeding completed successfully for userId:", userId);
     } catch (err) {
-      console.error('[Seed] ERROR during seeding:', err);
+      console.error("[Seed] ERROR during seeding:", err);
       throw err;
     }
-  }
+  },
 };
 
 export const parseTime = (timeStr: string) => {
-  const match = timeStr.match(/^(\d+):(\d+)(am|pm)$/);
-  if (!match) return 0;
-  let hours = parseInt(match[1]);
-  const minutes = parseInt(match[2]);
+  const normalized = timeStr.trim().toLowerCase().replace(/\s+/g, "");
+  const match = normalized.match(/^(\d{1,2}):(\d{2})(am|pm)?$/);
+  if (!match) return Number.NaN;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
   const period = match[3];
-  if (period === 'pm' && hours !== 12) hours += 12;
-  if (period === 'am' && hours === 12) hours = 0;
+
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    minutes > 59 ||
+    (!period && hours > 23) ||
+    (period && (hours < 1 || hours > 12))
+  ) {
+    return Number.NaN;
+  }
+
+  if (period === "pm" && hours !== 12) hours += 12;
+  if (period === "am" && hours === 12) hours = 0;
   return hours * 60 + minutes;
 };
 
@@ -490,6 +530,15 @@ export const getAvailableTimeSlots = ({
       const startMinutes = parseTime(range.start);
       const endMinutes = parseTime(range.end);
 
+      if (
+        Number.isNaN(startMinutes) ||
+        Number.isNaN(endMinutes) ||
+        endMinutes <= startMinutes
+      ) {
+        console.warn("[Availability] Ignoring invalid time range:", range);
+        return;
+      }
+
       for (let m = startMinutes; m + duration <= endMinutes; m += increment) {
         const hostDateTimeStr = `${dateStr} ${Math.floor(m / 60)
           .toString()
@@ -516,7 +565,10 @@ export const getAvailableTimeSlots = ({
         });
 
         if (!isBooked) {
-          const label = format(inviteeZonedDate, is24Hour ? "HH:mm" : "h:mmaaa");
+          const label = format(
+            inviteeZonedDate,
+            is24Hour ? "HH:mm" : "h:mmaaa",
+          );
           availableSlots.push({
             label,
             minutes:
@@ -537,13 +589,13 @@ export const getAvailableTimeSlots = ({
 export const formatTime = (totalMinutes: number, is24Hour: boolean = false) => {
   let h = Math.floor(totalMinutes / 60) % 24;
   const m = totalMinutes % 60;
-  
+
   if (is24Hour) {
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   }
 
-  const period = h < 12 ? 'am' : 'pm';
+  const period = h < 12 ? "am" : "pm";
   const displayH = h % 12 === 0 ? 12 : h % 12;
-  const displayM = m === 0 ? '00' : m.toString().padStart(2, '0');
+  const displayM = m === 0 ? "00" : m.toString().padStart(2, "0");
   return `${displayH}:${displayM}${period}`;
 };

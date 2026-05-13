@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Clock, Video, Globe, Calendar, ArrowLeft } from "lucide-react";
 import { EventType } from "../types";
 import { cn } from "../lib/utils";
@@ -66,8 +67,10 @@ export const EventInfo: React.FC<EventInfoProps> = ({
         </div>
       )}
 
-      <div className="mb-8 px-6 pt-6 md:px-8">
-        <div className="hidden md:flex w-16 h-16 bg-black rounded-full items-center justify-center mb-2 overflow-hidden">
+      <div className="mb-8 px-6 pt-6 md:px-8 flex flex-col items-center">
+        <div
+          className={`hidden md:flex w-16 h-16 bg-black rounded-full items-center justify-center mb-2 overflow-hidden`}
+        >
           {brandLogo ? (
             <img
               src={brandLogo}
@@ -88,7 +91,9 @@ export const EventInfo: React.FC<EventInfoProps> = ({
         </div>
 
         <div className="md:hidden flex flex-col items-center mb-4">
-          <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center overflow-hidden">
+          <div
+            className={`w-20 h-20 bg-black rounded-full flex items-center justify-center overflow-hidden`}
+          >
             {brandLogo ? (
               <img
                 src={brandLogo}
@@ -112,7 +117,7 @@ export const EventInfo: React.FC<EventInfoProps> = ({
         <p className="text-[#1a1a1a9c] font-medium text-lg mb-1 text-center md:text-left font-['Proxima_Nova',sans-serif]">
           {hostName}
         </p>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-6 text-center md:text-left">
+        <h1 className="text-2xl md:text-2xl font-bold text-slate-900 mb-6 text-center md:text-left">
           {event.title}
         </h1>
 
@@ -176,14 +181,14 @@ export const EventInfo: React.FC<EventInfoProps> = ({
         <button onClick={onCookieSettingsClick} className="hover:underline">
           Cookie settings
         </button>
-        <a
-          href="https://calendly.com/legal/privacy-notice"
+        <Link
+          to="/privacy"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:underline"
         >
           Privacy Policy
-        </a>
+        </Link>
       </div>
     </div>
   );

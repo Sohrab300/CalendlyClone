@@ -8,7 +8,10 @@ export function Footer() {
     <footer className="px-5 py-10 md:px-8 border-t border-slate-100 bg-white">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div>
-          <Link to="/" className="text-xl font-black tracking-tight text-blue-700">
+          <Link
+            to="/"
+            className="text-xl font-black tracking-tight text-blue-700"
+          >
             DEVSCHEDULE
           </Link>
           <p className="mt-3 text-xs font-semibold text-slate-600">
@@ -22,10 +25,20 @@ export function Footer() {
           <Link to="/features" className="hover:text-slate-950">
             Documentation
           </Link>
-          <a href={githubUrl} target="_blank" rel="noreferrer" className="hover:text-slate-950">
+          <a
+            href={githubUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-slate-950"
+          >
             Github Repo
           </a>
-          <a href="https://www.linkedin.com" target="_blank" rel="noreferrer" className="hover:text-slate-950">
+          <a
+            href="https://www.linkedin.com/in/sohrab-sheikh-139166249/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-slate-950"
+          >
             LinkedIn
           </a>
           <Link to="/privacy" className="hover:text-slate-950">
