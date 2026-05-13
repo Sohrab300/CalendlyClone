@@ -319,6 +319,109 @@ export const availabilityService = {
 
     if (error) throw error;
     return data;
+  },
+
+  async seedNewUser(userId: string) {
+    console.log('[Seed] Starting seedNewUser for userId:', userId);
+    
+    try {
+      // Check if user already has events
+      console.log('[Seed] Checking for existing events...');
+      const events = await this.getEventTypes(userId);
+      console.log('[Seed] Found existing events count:', events.length);
+      
+      if (events.length > 0) {
+        console.log('[Seed] User already has events, skipping seed.');
+        return;
+      }
+
+      // 1. Get or Create Default Schedule
+      console.log('[Seed] Fetching schedules...');
+      const schedules = await this.getSchedules(userId);
+      console.log('[Seed] Found existing schedules count:', schedules.length);
+      
+      let targetScheduleId: string;
+
+      if (schedules.length > 0) {
+        targetScheduleId = schedules[0].id;
+        console.log('[Seed] Using existing schedule:', targetScheduleId);
+      } else {
+        console.log('[Seed] Creating new default schedule...');
+        const defaultSchedule = await this.createSchedule('Working hours (default)', userId, true);
+        targetScheduleId = defaultSchedule.id;
+        console.log('[Seed] Created schedule:', targetScheduleId);
+
+        // 2. Set Default Weekly Hours
+        console.log('[Seed] Setting default weekly hours...');
+        const DEFAULT_WEEKLY_HOURS = [
+          { day_index: 0, enabled: false, slots: [] },
+          { day_index: 1, enabled: true, slots: [{ id: '1', start: '09:00am', end: '05:00pm' }] },
+          { day_index: 2, enabled: true, slots: [{ id: '2', start: '09:00am', end: '05:00pm' }] },
+          { day_index: 3, enabled: true, slots: [{ id: '3', start: '09:00am', end: '05:00pm' }] },
+          { day_index: 4, enabled: true, slots: [{ id: '4', start: '09:00am', end: '05:00pm' }] },
+          { day_index: 5, enabled: true, slots: [{ id: '5', start: '09:00am', end: '05:00pm' }] },
+          { day_index: 6, enabled: false, slots: [] },
+        ];
+        await this.updateWeeklyHours(targetScheduleId, DEFAULT_WEEKLY_HOURS);
+        console.log('[Seed] Weekly hours set.');
+      }
+
+      // 3. Create Mock Events
+      console.log('[Seed] Creating default events...');
+      const defaultEvents = [
+        {
+          title: '30 Minute Meeting',
+          description: 'A quick call to discuss your project requirements and how we can help.',
+          duration: 30,
+          slug: '30-minute-meeting',
+          location_type: 'web_conference',
+          location: 'Google Meet',
+          type: 'One-on-One',
+          color: 'bg-indigo-600',
+          time_increment: 30,
+          timezone_display: 'detect'
+        },
+        {
+          title: '15 Minute Quick Chat',
+          description: 'A brief introduction and overview of our services.',
+          duration: 15,
+          slug: '15-minute-quick-chat',
+          location_type: 'web_conference',
+          location: 'Zoom',
+          type: 'One-on-One',
+          color: 'bg-emerald-500',
+          time_increment: 30,
+          timezone_display: 'detect'
+        }
+      ];
+
+      for (const event of defaultEvents) {
+        // Check if event with this slug already exists for this user
+        const { data: existing } = await supabase
+          .from('event_types')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('slug', event.slug)
+          .maybeSingle();
+
+        if (existing) {
+          console.log(`[Seed] Event with slug ${event.slug} already exists, skipping.`);
+          continue;
+        }
+
+        console.log('[Seed] Creating event:', event.title);
+        await this.createEventType({
+          ...event,
+          user_id: userId,
+          schedule_id: targetScheduleId,
+          link: `${window.location.origin}/placeholder/${event.slug}`,
+        });
+      }
+      console.log('[Seed] Seeding completed successfully for userId:', userId);
+    } catch (err) {
+      console.error('[Seed] ERROR during seeding:', err);
+      throw err;
+    }
   }
 };
 

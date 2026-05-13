@@ -15,6 +15,7 @@ import CaseStudiesPage from './pages/CaseStudiesPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import SignupPage from './pages/SignupPage';
+import AuthCallback from './pages/AuthCallback';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/admin/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route 
             path="/admin/*" 
             element={
