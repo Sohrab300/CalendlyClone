@@ -71,30 +71,8 @@ export function useAdminDashboard() {
 
       setProfile(profileResponse.data);
 
-      let finalEvents = eventsData;
-      let finalSchedules = schedulesData || [];
-
-      if (eventsData.length === 0 && finalSchedules.length === 0) {
-        console.log('New user detected. Seeding default data...');
-        const defaultSchedule = await availabilityService.createSchedule('Working hours (default)', userId, true);
-        finalSchedules = [defaultSchedule];
-
-        await availabilityService.updateWeeklyHours(defaultSchedule.id, DEFAULT_WEEKLY_HOURS);
-
-        for (const event of MOCK_EVENTS) {
-          const { id, ...rest } = event;
-          await availabilityService.createEventType({
-            ...rest,
-            user_id: userId,
-            schedule_id: defaultSchedule.id,
-          });
-        }
-
-        finalEvents = await availabilityService.getEventTypes(userId);
-      }
-
-      setEvents(finalEvents);
-      setSchedules(finalSchedules);
+      setEvents(eventsData);
+      setSchedules(schedulesData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

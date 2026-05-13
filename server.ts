@@ -221,6 +221,97 @@ async function startServer() {
     }
   });
 
+  // SIGNUP OTP ROUTES
+  app.post("/api/auth/send-signup-otp", async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      // Store in Database
+      const { error: dbError } = await supabaseAdmin
+        .from('verification_codes')
+        .insert([{ email, code, expires_at: expires.toISOString() }]);
+
+      if (dbError) {
+        console.error("Database error saving verification code:", dbError);
+      }
+
+      const { emailUser, emailPass } = getEmailCredentials();
+
+      if (!emailPass) {
+        console.warn("EMAIL_PASS not configured. Logging OTP to console:", code);
+        return res.json({ success: true, warning: "Email not sent due to missing configuration", debug_code: code });
+      }
+
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"Calendly Clone" <${emailUser}>`,
+        to: email,
+        subject: "Your Sign Up verification code",
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 20px;">Verify your email</h1>
+            <p>Use the following code to complete your sign up process:</p>
+            <div style="background-color: #f4f4f4; padding: 30px; text-align: center; border-radius: 8px; margin: 20px 0;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px;">${code}</span>
+            </div>
+            <p>This code will expire in 10 minutes.</p>
+          </div>
+        `,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error sending signup OTP:", error);
+      res.status(500).json({ error: "Failed to send verification code" });
+    }
+  });
+
+  app.post("/api/auth/verify-signup-otp", async (req, res) => {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ error: "Email and code are required" });
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('verification_codes')
+        .select('*')
+        .eq('email', email)
+        .eq('code', code)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        return res.status(400).json({ error: "Invalid verification code" });
+      }
+
+      if (new Date() > new Date(data.expires_at)) {
+        return res.status(400).json({ error: "Verification code has expired" });
+      }
+
+      // Success - Delete used code
+      await supabaseAdmin
+        .from('verification_codes')
+        .delete()
+        .eq('email', email);
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Verification error:", err);
+      res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
   // API Route for scheduling and sending email
   app.post("/api/schedule", async (req, res) => {
     const { name, email, eventTitle, startTime, endTime, timezone, whatsapp, automationType, rawStartTime, rawEndTime, hostUsername } = req.body;
