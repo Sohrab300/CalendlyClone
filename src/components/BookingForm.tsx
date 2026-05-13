@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { EventType } from "../services/availabilityService";
@@ -601,14 +602,14 @@ export const BookingForm: React.FC<BookingFormProps> = ({
             Calendly's Terms of Use
           </a>{" "}
           and{" "}
-          <a
-            href="https://calendly.com/legal/privacy-notice"
+          <Link
+            to="/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:underline"
           >
             Privacy Notice
-          </a>
+          </Link>
           .
         </p>
 

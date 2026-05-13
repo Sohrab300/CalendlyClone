@@ -2,7 +2,13 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Loader2, Globe, ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
-import { format, addMinutes, parseISO, startOfMonth, startOfToday } from "date-fns";
+import {
+  format,
+  addMinutes,
+  parseISO,
+  startOfMonth,
+  startOfToday,
+} from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 import {
   useParams,
@@ -149,12 +155,13 @@ export default function SchedulingPage() {
 
         setEvent(foundEvent);
         setHostProfile(profile);
-        setAllBookings(
-          await availabilityService.getAllBookings(profile.id).catch((err) => {
+        const hostBookings = await availabilityService
+          .getAllBookings(profile.id)
+          .catch((err) => {
             console.error("Error fetching host bookings:", err);
             return [];
-          }),
-        );
+          });
+        setAllBookings(hostBookings);
 
         // Handle timezone display logic
         if (foundEvent.timezone_display === "lock" && profile?.timezone) {
@@ -164,17 +171,32 @@ export default function SchedulingPage() {
         }
 
         if (foundEvent.use_custom_schedule) {
-          setWeeklyHours(foundEvent.custom_weekly_hours || []);
-          setOverrides(foundEvent.custom_date_overrides || []);
+          const customWeeklyHours = (foundEvent.custom_weekly_hours || []).map(
+            (day) => ({
+              ...day,
+              day_index: Number(day.day_index),
+              enabled: Boolean(day.enabled),
+              slots: Array.isArray(day.slots) ? day.slots : [],
+            }),
+          );
+          const customOverrides = foundEvent.custom_date_overrides || [];
+          setWeeklyHours(customWeeklyHours);
+          setOverrides(customOverrides);
         } else {
           try {
             let scheduleId = foundEvent.schedule_id;
 
             if (!scheduleId) {
               const activeSchedule = await availabilityService
-                .getActiveSchedule()
+                .getActiveSchedule(profile.id)
                 .catch(() => null);
-              scheduleId = activeSchedule?.id;
+              const fallbackSchedule = activeSchedule
+                ? null
+                : await availabilityService
+                    .getSchedules(profile.id)
+                    .then((schedules) => schedules[0])
+                    .catch(() => null);
+              scheduleId = activeSchedule?.id || fallbackSchedule?.id;
             }
 
             if (scheduleId) {
@@ -186,6 +208,10 @@ export default function SchedulingPage() {
               ]);
               setWeeklyHours(weekly);
               setOverrides(dateOverrides);
+            } else {
+              console.warn("No schedule found for host:", profile.id);
+              setWeeklyHours([]);
+              setOverrides([]);
             }
           } catch (scheduleErr) {
             console.error("Error loading schedule:", scheduleErr);
@@ -241,7 +267,11 @@ export default function SchedulingPage() {
     // Check date range
     if (event.date_range_kind === "relative" && event.date_range_value) {
       let maxDate = new Date(today);
-      if (event.date_range_type === "calendar_days") {
+      if (
+        event.date_range_type === "calendar_days" ||
+        event.date_range_type === "days" ||
+        !event.date_range_type
+      ) {
         maxDate.setDate(maxDate.getDate() + event.date_range_value);
       } else if (event.date_range_type === "weekdays") {
         let added = 0;
@@ -253,7 +283,9 @@ export default function SchedulingPage() {
           }
         }
       }
-      if (date > maxDate) return false;
+      if (date > maxDate) {
+        return false;
+      }
     } else if (
       event.date_range_kind === "range" &&
       event.date_range_start &&
@@ -263,25 +295,27 @@ export default function SchedulingPage() {
       const end = parseCalendarDateValue(event.date_range_end);
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
-      if (date < start || date > end) return false;
+      if (date < start || date > end) {
+        return false;
+      }
     } else if (event.date_range_kind === "indefinite") {
       // No limit into the future
     }
 
-    return (
-      getAvailableTimeSlots({
-        selectedDate: date,
-        is24Hour,
-        weeklyHours,
-        overrides,
-        bookings: allBookings,
-        duration: event.duration,
-        timeIncrement: event.time_increment,
-        hostTimezone: hostProfile?.timezone || "Asia/Kolkata",
-        inviteeTimezone: timezone,
-        minimumNotice: event.minimum_notice,
-      }).length > 0
-    );
+    const slots = getAvailableTimeSlots({
+      selectedDate: date,
+      is24Hour,
+      weeklyHours,
+      overrides,
+      bookings: allBookings,
+      duration: event.duration,
+      timeIncrement: event.time_increment,
+      hostTimezone: hostProfile?.timezone || "Asia/Kolkata",
+      inviteeTimezone: timezone,
+      minimumNotice: event.minimum_notice,
+    });
+
+    return slots.length > 0;
   };
 
   const handleDateSelect = (date: Date) => {
@@ -795,14 +829,14 @@ export default function SchedulingPage() {
                   >
                     Cookie settings
                   </button>
-                  <a
-                    href="https://calendly.com/legal/privacy-notice"
+                  <Link
+                    to="/privacy"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:underline"
                   >
                     Privacy Policy
-                  </a>
+                  </Link>
                 </div>
               </motion.div>
             </>

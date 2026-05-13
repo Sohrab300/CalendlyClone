@@ -11,30 +11,33 @@ import { toZonedTime } from "date-fns-tz";
 dotenv.config();
 
 const getEmailCredentials = () => ({
-  emailUser: (process.env.EMAIL_USER || 'sheikhsohrab618@gmail.com').trim(),
+  emailUser: (process.env.EMAIL_USER || "sheikhsohrab618@gmail.com").trim(),
   emailPass: process.env.EMAIL_PASS?.trim(),
 });
 
 const getEmailSendErrorMessage = (error: any) => {
-  if (error?.code === 'EAUTH' || error?.responseCode === 535) {
-    return 'Email authentication failed. Check EMAIL_USER and EMAIL_PASS. Gmail requires an App Password, not the normal account password.';
+  if (error?.code === "EAUTH" || error?.responseCode === 535) {
+    return "Email authentication failed. Check EMAIL_USER and EMAIL_PASS. Gmail requires an App Password, not the normal account password.";
   }
 
-  return 'Failed to send verification email.';
+  return "Failed to send verification email.";
 };
 
 async function createGoogleCalendarEvent(eventData: any) {
-  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
+  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } =
+    process.env;
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
-    console.warn("Google Calendar credentials not fully configured. Skipping automatic calendar event creation.");
+    console.warn(
+      "Google Calendar credentials not fully configured. Skipping automatic calendar event creation.",
+    );
     return null;
   }
 
   const oauth2Client = new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    "https://developers.google.com/oauthplayground" // Default for playground or your redirect URI
+    "https://developers.google.com/oauthplayground", // Default for playground or your redirect URI
   );
 
   oauth2Client.setCredentials({
@@ -46,16 +49,14 @@ async function createGoogleCalendarEvent(eventData: any) {
   const event = {
     summary: eventData.eventTitle,
     location: "Google Meet / Web Conference",
-    description: `Discovery Meeting with Hv Technologies. \n\nAutomation Interests: ${eventData.automationType.join(', ') || 'None'} \nWhatsapp: ${eventData.whatsapp}`,
+    description: `Discovery Meeting with Hv Technologies. \n\nAutomation Interests: ${eventData.automationType.join(", ") || "None"} \nWhatsapp: ${eventData.whatsapp}`,
     start: {
       dateTime: new Date(eventData.rawStartTime).toISOString(),
     },
     end: {
       dateTime: new Date(eventData.rawEndTime).toISOString(),
     },
-    attendees: [
-      { email: eventData.email, displayName: eventData.name },
-    ],
+    attendees: [{ email: eventData.email, displayName: eventData.name }],
     conferenceData: {
       createRequest: {
         requestId: `meeting-${Date.now()}`,
@@ -85,7 +86,10 @@ async function startServer() {
 
   // Supabase Admin client for verification codes
   const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+  const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    "";
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
   // API Route for sending verification OTP
@@ -99,7 +103,7 @@ async function startServer() {
 
       // Industry Standard: Store in Database (Supabase)
       const { error: dbError } = await supabaseAdmin
-        .from('verification_codes')
+        .from("verification_codes")
         .insert([{ email, code, expires_at: expires.toISOString() }]);
 
       if (dbError) {
@@ -111,18 +115,30 @@ async function startServer() {
       const { emailUser, emailPass } = getEmailCredentials();
 
       // Formatting details for email
-      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-      const tz = 'Asia/Kolkata';
+      const ip =
+        req.headers["x-forwarded-for"] ||
+        req.socket.remoteAddress ||
+        "127.0.0.1";
+      const tz = "Asia/Kolkata";
       const zonedDate = toZonedTime(new Date(), tz);
-      const timestamp = format(zonedDate, "h:mmaaa - EEEE, MMMM d, yyyy") + " (India Standard Time)";
+      const timestamp =
+        format(zonedDate, "h:mmaaa - EEEE, MMMM d, yyyy") +
+        " (India Standard Time)";
 
       if (!emailPass) {
-        console.warn("EMAIL_PASS not configured. Logging OTP to console:", code);
-        return res.json({ success: true, warning: "Email not sent due to missing configuration", debug_code: code });
+        console.warn(
+          "EMAIL_PASS not configured. Logging OTP to console:",
+          code,
+        );
+        return res.json({
+          success: true,
+          warning: "Email not sent due to missing configuration",
+          debug_code: code,
+        });
       }
 
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        service: "gmail",
         auth: {
           user: emailUser,
           pass: emailPass,
@@ -152,7 +168,7 @@ async function startServer() {
               
               <div style="margin-bottom: 16px;">
                 <span style="font-size: 14px; font-weight: 800; display: block; margin-bottom: 4px; text-transform: none;">Meeting name</span>
-                <span style="font-size: 15px; color: #1a1a1a;">${meetingName || 'Event Booking'}</span>
+                <span style="font-size: 15px; color: #1a1a1a;">${meetingName || "Event Booking"}</span>
               </div>
               
               <div style="margin-bottom: 16px;">
@@ -187,16 +203,17 @@ async function startServer() {
   // API Route for verifying OTP
   app.post("/api/verification/verify", async (req, res) => {
     const { email, code } = req.body;
-    if (!email || !code) return res.status(400).json({ error: "Email and code are required" });
+    if (!email || !code)
+      return res.status(400).json({ error: "Email and code are required" });
 
     try {
       // Industry Standard: Verify from Database
       const { data, error } = await supabaseAdmin
-        .from('verification_codes')
-        .select('*')
-        .eq('email', email)
-        .eq('code', code)
-        .order('created_at', { ascending: false })
+        .from("verification_codes")
+        .select("*")
+        .eq("email", email)
+        .eq("code", code)
+        .order("created_at", { ascending: false })
         .limit(1)
         .single();
 
@@ -210,9 +227,9 @@ async function startServer() {
 
       // Success - Delete used code
       await supabaseAdmin
-        .from('verification_codes')
+        .from("verification_codes")
         .delete()
-        .eq('email', email);
+        .eq("email", email);
 
       res.json({ success: true });
     } catch (err) {
@@ -232,7 +249,7 @@ async function startServer() {
 
       // Store in Database
       const { error: dbError } = await supabaseAdmin
-        .from('verification_codes')
+        .from("verification_codes")
         .insert([{ email, code, expires_at: expires.toISOString() }]);
 
       if (dbError) {
@@ -242,12 +259,19 @@ async function startServer() {
       const { emailUser, emailPass } = getEmailCredentials();
 
       if (!emailPass) {
-        console.warn("EMAIL_PASS not configured. Logging OTP to console:", code);
-        return res.json({ success: true, warning: "Email not sent due to missing configuration", debug_code: code });
+        console.warn(
+          "EMAIL_PASS not configured. Logging OTP to console:",
+          code,
+        );
+        return res.json({
+          success: true,
+          warning: "Email not sent due to missing configuration",
+          debug_code: code,
+        });
       }
 
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        service: "gmail",
         auth: {
           user: emailUser,
           pass: emailPass,
@@ -279,15 +303,16 @@ async function startServer() {
 
   app.post("/api/auth/verify-signup-otp", async (req, res) => {
     const { email, code } = req.body;
-    if (!email || !code) return res.status(400).json({ error: "Email and code are required" });
+    if (!email || !code)
+      return res.status(400).json({ error: "Email and code are required" });
 
     try {
       const { data, error } = await supabaseAdmin
-        .from('verification_codes')
-        .select('*')
-        .eq('email', email)
-        .eq('code', code)
-        .order('created_at', { ascending: false })
+        .from("verification_codes")
+        .select("*")
+        .eq("email", email)
+        .eq("code", code)
+        .order("created_at", { ascending: false })
         .limit(1)
         .single();
 
@@ -301,9 +326,9 @@ async function startServer() {
 
       // Success - Delete used code
       await supabaseAdmin
-        .from('verification_codes')
+        .from("verification_codes")
         .delete()
-        .eq('email', email);
+        .eq("email", email);
 
       res.json({ success: true });
     } catch (err) {
@@ -314,10 +339,20 @@ async function startServer() {
 
   // API Route for scheduling and sending email
   app.post("/api/schedule", async (req, res) => {
-    const { name, email, eventTitle, startTime, endTime, timezone, whatsapp, automationType, rawStartTime, rawEndTime, hostUsername } = req.body;
-    const inviteeName = name || req.body.firstName || 'Invitee';
-
-    console.log(`[Schedule API] New request for ${eventTitle} - Host: ${hostUsername}, Invitee: ${email} (${inviteeName})`);
+    const {
+      name,
+      email,
+      eventTitle,
+      startTime,
+      endTime,
+      timezone,
+      whatsapp,
+      automationType,
+      rawStartTime,
+      rawEndTime,
+      hostUsername,
+    } = req.body;
+    const inviteeName = name || req.body.firstName || "Invitee";
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -327,12 +362,19 @@ async function startServer() {
       const { emailUser, emailPass } = getEmailCredentials();
 
       if (!emailPass) {
-        console.warn("[Schedule API] EMAIL_PASS not configured. Skipping email invitation.");
-        return res.json({ success: true, warning: "Email not sent due to missing configuration" });
+        console.warn(
+          "[Schedule API] EMAIL_PASS not configured. Skipping email invitation.",
+        );
+        return res.json({
+          success: true,
+          warning: "Email not sent due to missing configuration",
+        });
       }
 
-      const automationInterests = Array.isArray(automationType) ? automationType.join(', ') : 'None specified';
-      const whatsappInfo = whatsapp || 'Not provided';
+      const automationInterests = Array.isArray(automationType)
+        ? automationType.join(", ")
+        : "None specified";
+      const whatsappInfo = whatsapp || "Not provided";
 
       // Fetch host profile settings and email
       let hostNotificationsEnabled = true;
@@ -341,19 +383,20 @@ async function startServer() {
 
       try {
         if (hostUsername) {
-          console.log(`[Schedule API] Fetching profile for host: ${hostUsername}`);
           const { data: profile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('host_notifications_enabled, email, full_name')
-            .eq('username', hostUsername)
+            .from("profiles")
+            .select("host_notifications_enabled, email, full_name")
+            .eq("username", hostUsername)
             .single();
-          
+
           if (profileError) {
-            console.warn(`[Schedule API] Profile lookup error for ${hostUsername}:`, profileError.message);
+            console.warn(
+              `[Schedule API] Profile lookup error for ${hostUsername}:`,
+              profileError.message,
+            );
           }
 
           if (profile) {
-            console.log(`[Schedule API] Found profile: ${profile.full_name} (${profile.email})`);
             if (profile.host_notifications_enabled === false) {
               hostNotificationsEnabled = false;
             }
@@ -364,7 +407,9 @@ async function startServer() {
               hostDisplayName = profile.full_name;
             }
           } else {
-            console.warn(`[Schedule API] No profile found for username: ${hostUsername}`);
+            console.warn(
+              `[Schedule API] No profile found for username: ${hostUsername}`,
+            );
           }
         }
       } catch (err) {
@@ -372,7 +417,6 @@ async function startServer() {
       }
 
       // Create Google Calendar Event
-      console.log("[Schedule API] Attempting to create Google Calendar event...");
       const googleEvent = await createGoogleCalendarEvent({
         name: inviteeName,
         email,
@@ -383,20 +427,15 @@ async function startServer() {
         whatsapp: whatsappInfo,
         automationType: Array.isArray(automationType) ? automationType : [],
         rawStartTime,
-        rawEndTime
+        rawEndTime,
       });
 
-      const hangoutsLink = googleEvent?.hangoutLink || 'Google Meet / Web Conference';
+      const hangoutsLink =
+        googleEvent?.hangoutLink || "Google Meet / Web Conference";
       const googleCalendarLink = googleEvent?.htmlLink || null;
 
-      if (googleEvent) {
-        console.log(`[Schedule API] Google Calendar event created: ${googleEvent.id}`);
-      } else {
-        console.log("[Schedule API] Google Calendar event creation skipped or failed.");
-      }
-
       // Create Calendar Event (ICS)
-      const calendar = ical({ name: 'Calendly Meetings' });
+      const calendar = ical({ name: "Calendly Meetings" });
       calendar.createEvent({
         start: new Date(rawStartTime),
         end: new Date(rawEndTime),
@@ -404,17 +443,17 @@ async function startServer() {
         description: `Meeting scheduled via Calendly Clone. \n\nInvitee: ${inviteeName} (${email})\nAutomation Interests: ${automationInterests} \nWhatsapp: ${whatsappInfo}`,
         location: hangoutsLink,
         organizer: {
-          name: 'Calendly Clone',
-          email: hostEmail
+          name: "Calendly Clone",
+          email: hostEmail,
         },
         attendees: [
           { name: inviteeName, email: email, rsvp: true },
-          { name: hostDisplayName, email: hostEmail, rsvp: true }
-        ]
+          { name: hostDisplayName, email: hostEmail, rsvp: true },
+        ],
       });
 
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        service: "gmail",
         auth: {
           user: emailUser,
           pass: emailPass,
@@ -443,13 +482,17 @@ async function startServer() {
                 <p style="margin: 12px 0; color: #475569;"><strong>Location:</strong> <a href="${hangoutsLink}" style="color: #006bff;">${hangoutsLink}</a></p>
               </div>
 
-              ${googleCalendarLink ? `
+              ${
+                googleCalendarLink
+                  ? `
               <div style="text-align: center; margin-top: 20px;">
                 <a href="${googleCalendarLink}" style="display: inline-block; background-color: #ffffff; color: #1a73e8; padding: 12px 24px; border: 1px solid #dadce0; border-radius: 4px; font-weight: 500; text-decoration: none;">
                   View on Google Calendar
                 </a>
               </div>
-              ` : ''}
+              `
+                  : ""
+              }
               
               <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-top: 30px;">
                 We've attached a calendar invitation to this email for your convenience.
@@ -461,10 +504,10 @@ async function startServer() {
           </div>
         `,
         icalEvent: {
-          filename: 'invitation.ics',
-          method: 'REQUEST',
-          content: calendar.toString()
-        }
+          filename: "invitation.ics",
+          method: "REQUEST",
+          content: calendar.toString(),
+        },
       };
 
       const hostMailOptions = {
@@ -494,11 +537,15 @@ async function startServer() {
                 <p style="margin: 12px 0; color: #475569;"><strong>Location:</strong> ${hangoutsLink}</p>
               </div>
 
-              ${automationInterests !== 'None specified' ? `
+              ${
+                automationInterests !== "None specified"
+                  ? `
               <p style="color: #475569; font-size: 14px;">
                 <strong>Interests:</strong> ${automationInterests}
               </p>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
             <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
               Powered by Calendly Clone
@@ -506,40 +553,45 @@ async function startServer() {
           </div>
         `,
         icalEvent: {
-          filename: 'invitation.ics',
-          method: 'PUBLISH',
-          content: calendar.toString()
-        }
+          filename: "invitation.ics",
+          method: "PUBLISH",
+          content: calendar.toString(),
+        },
       };
 
-      console.log(`[Schedule API] Sending emails... Invitee: ${email}, Host: ${hostEmail} (Notifications: ${hostNotificationsEnabled})`);
-      
-      const mailTasks = [
-        { options: inviteeMailOptions, type: 'Invitee' }
-      ];
-      
+      const mailTasks = [{ options: inviteeMailOptions, type: "Invitee" }];
+
       if (hostNotificationsEnabled) {
-        mailTasks.push({ options: hostMailOptions, type: 'Host' });
+        mailTasks.push({ options: hostMailOptions, type: "Host" });
       }
 
-      const results = await Promise.allSettled(mailTasks.map(task => transporter.sendMail(task.options)));
-      
+      const results = await Promise.allSettled(
+        mailTasks.map((task) => transporter.sendMail(task.options)),
+      );
+
       results.forEach((result, index) => {
         const taskType = mailTasks[index].type;
-        if (result.status === 'fulfilled') {
-          console.log(`[Schedule API] Successfully sent ${taskType} email.`);
+        if (result.status === "fulfilled") {
         } else {
-          console.error(`[Schedule API] Failed to send ${taskType} email:`, result.reason);
+          console.error(
+            `[Schedule API] Failed to send ${taskType} email:`,
+            result.reason,
+          );
         }
       });
 
-      res.json({ 
-        success: true, 
-        emailStatus: results.map((r, i) => ({ type: mailTasks[i].type, status: r.status }))
+      res.json({
+        success: true,
+        emailStatus: results.map((r, i) => ({
+          type: mailTasks[i].type,
+          status: r.status,
+        })),
       });
     } catch (error) {
       console.error("[Schedule API] Fatal error in schedule route:", error);
-      res.status(500).json({ error: "Internal server error during scheduling." });
+      res
+        .status(500)
+        .json({ error: "Internal server error during scheduling." });
     }
   });
 
