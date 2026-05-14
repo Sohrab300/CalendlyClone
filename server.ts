@@ -1020,13 +1020,6 @@ async function startServer() {
       return res.status(404).json({ error: "Not found" });
     }
 
-    if (process.env.NODE_ENV !== "production") {
-      return res.status(400).json({
-        error:
-          "Sentry backend test only runs when NODE_ENV is production and SENTRY_TEST_ENABLED is true",
-      });
-    }
-
     throw new Error("Sentry backend test exception");
   });
 
