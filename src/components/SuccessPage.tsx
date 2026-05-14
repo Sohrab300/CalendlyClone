@@ -73,7 +73,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full p-4 md:px-10 md:py-8 text-center bg-white rounded-md">
+    <div className="flex flex-col items-center justify-center w-full h-full p-4 md:px-10 md:py-8 text-center bg-white rounded-md">
       {hostProfile?.brand_logo_url ? (
         <div className="mb-4">
           <img
@@ -189,7 +189,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({
         </div>
       )}
 
-      <div className="mt-10 w-full">
+      <div className="mt-10 w-full mt-auto">
         <div className="flex gap-4 justify-start w-full">
           <button
             onClick={onCookieSettingsClick}

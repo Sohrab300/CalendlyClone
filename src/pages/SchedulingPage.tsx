@@ -531,7 +531,7 @@ export default function SchedulingPage() {
             ) as any
           )?.values || [];
 
-        await fetch("/api/schedule", {
+        const scheduleResponse = await fetch("/api/schedule", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -560,6 +560,19 @@ export default function SchedulingPage() {
             rawEndTime: endTime.toISOString(),
           }),
         });
+        const scheduleResult = await scheduleResponse.json().catch(() => null);
+
+        if (!scheduleResponse.ok) {
+          console.warn("Meeting API failed:", scheduleResult);
+        } else if (
+          scheduleResult?.warning ||
+          scheduleResult?.calendarStatus === "rejected" ||
+          scheduleResult?.emailStatus?.some(
+            (status: any) => status.status === "rejected",
+          )
+        ) {
+          console.warn("Meeting API completed with warnings:", scheduleResult);
+        }
       } catch (e) {
         console.warn("Meeting API failed, check server configuration:", e);
       }
@@ -714,7 +727,7 @@ export default function SchedulingPage() {
                       <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="w-full md:w-[40%] bg-white"
+                        className="w-full md:w-[40%] bg-white border border-red-500"
                       >
                         <div className="md:hidden p-4 border-b border-gray-200 flex flex-col items-center gap-4">
                           <button
@@ -778,7 +791,7 @@ export default function SchedulingPage() {
                         )}
 
                         <div className="py-4 md:p-0 md:pt-24 flex flex-col min-h-0">
-                          <div className="hidden md:block mb-6">
+                          <div className="hidden md:block mb-6 ml-4">
                             <h3 className="text-slate-800 font-medium">
                               {format(selectedDate, "EEEE, MMMM d")}
                             </h3>

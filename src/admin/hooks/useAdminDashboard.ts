@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { MOCK_EVENTS } from '../../constants';
 import { supabase } from '../../lib/supabase';
 import { availabilityService, EventType } from '../../services/availabilityService';
+import { ensureProfileForSession } from '../../services/profileService';
 import { AdminProfile, EventFormData, ScheduleOption, SettingsTab } from '../types';
 
 const DEFAULT_EVENT_NAME = 'New Meeting';
@@ -61,6 +62,10 @@ export function useAdminDashboard() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await ensureProfileForSession(session, user);
+      }
 
       const userId = user.id;
       const [eventsData, schedulesData, profileResponse] = await Promise.all([
