@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getValidatedSession, supabase } from '../lib/supabase';
-import { availabilityService } from '../services/availabilityService';
+import { ensureProfileForSession } from '../services/profileService';
 import { Loader2 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 
@@ -26,77 +26,12 @@ export default function AuthCallback() {
         console.log("[AuthCallback] Session found for user:", user.id);
         
         try {
-          // 1. Check if profile exists, if not create it
-          console.log("[AuthCallback] Checking if profile exists...");
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .maybeSingle();
-
-          if (profileError) {
-            console.error("[AuthCallback] Error fetching profile:", profileError);
-            await supabase.auth.signOut({ scope: "local" });
-            navigate('/admin/login');
-            return;
-          }
-
-          if (!profile) {
-            console.log("[AuthCallback] Profile NOT found. Creating profile for new Google user...");
-            const googleName = user.user_metadata.full_name || user.user_metadata.name || "";
-            const googleEmail = user.email || "";
-            const baseUsername = (user.user_metadata.preferred_username || 
-                                 user.user_metadata.name || 
-                                 user.email?.split("@")[0] || 
-                                 "user").toLowerCase().replace(/[^a-z0-9]/g, "");
-            
-            const { error: insertError } = await supabase
-              .from("profiles")
-              .insert([
-                {
-                  id: user.id,
-                  full_name: googleName,
-                  email: googleEmail,
-                  username: `${baseUsername}${Math.floor(Math.random() * 1000)}`,
-                  google_refresh_token: session.provider_refresh_token,
-                  google_access_token: session.provider_token,
-                },
-              ]);
-            
-            if (insertError) {
-              console.error("[AuthCallback] CRITICAL: Error creating profile:", insertError);
-              await supabase.auth.signOut({ scope: "local" });
-              navigate('/admin/login');
-              return;
-            } else {
-              console.log("[AuthCallback] Profile created successfully.");
-            }
-          } else {
-            console.log("[AuthCallback] Profile already exists.");
-          }
-
-          // 2. Check if this is a new user by checking schedules count
-          console.log("[AuthCallback] Checking schedules count for seeding...");
-          const { count, error: countError } = await supabase
-            .from("schedules")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", user.id);
-
-          if (countError) {
-            console.error("[AuthCallback] Error checking schedules:", countError);
-          }
-
-          console.log("[AuthCallback] Schedules count:", count);
-
-          if (!countError && count === 0) {
-            console.log("[AuthCallback] New user detected (0 schedules). Starting seeding...");
-            await availabilityService.seedNewUser(user.id);
-            console.log("[AuthCallback] Seeding function call finished.");
-          } else {
-            console.log("[AuthCallback] Skipping seeding (schedules already exist or error occurred).");
-          }
-        } catch (seedError) {
-          console.error("[AuthCallback] UNEXPECTED ERROR during profile/seed flow:", seedError);
+          await ensureProfileForSession(session, user);
+        } catch (profileError) {
+          console.error("[AuthCallback] Error ensuring profile:", profileError);
+          await supabase.auth.signOut({ scope: "local" });
+          navigate('/admin/login');
+          return;
         }
 
         console.log("[AuthCallback] Redirecting to /admin...");

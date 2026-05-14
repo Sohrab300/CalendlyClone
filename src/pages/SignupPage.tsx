@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { getValidatedSession, supabase } from "../lib/supabase";
-import { availabilityService } from "../services/availabilityService";
+import { ensureProfileForSession } from "../services/profileService";
 import { toast } from "sonner";
 import { 
   Loader2, 
@@ -51,73 +51,15 @@ export default function SignupPage() {
 
       const { session, user } = await getValidatedSession();
       if (session && user) {
-        
-        // Check if profile exists
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error("[Signup-OAuth] Error fetching profile:", profileError);
-          toast.error("We could not load your profile. Please try signing in again.");
+        try {
+          await ensureProfileForSession(session, user);
+        } catch (error) {
+          console.error("[Signup-OAuth] Error ensuring profile:", error);
+          await supabase.auth.signOut({ scope: "local" });
+          toast.error("We could not finish setting up your profile. Please try again.");
           return;
         }
 
-        if (!profile) {
-          console.log("[Signup-OAuth] Profile NOT found. Creating profile...");
-          const googleName = user.user_metadata.full_name || user.user_metadata.name || "";
-          const googleEmail = user.email || "";
-          
-          // Generate a basic username from name or email
-          const baseUsername = (user.user_metadata.preferred_username || 
-                               user.user_metadata.name || 
-                               user.email?.split("@")[0] || 
-                               "user").toLowerCase().replace(/[^a-z0-9]/g, "");
-          
-          const { error: insertError } = await supabase
-            .from("profiles")
-            .insert([
-              {
-                id: user.id,
-                full_name: googleName,
-                email: googleEmail,
-                username: `${baseUsername}${Math.floor(Math.random() * 1000)}`,
-                google_refresh_token: session.provider_refresh_token,
-                google_access_token: session.provider_token,
-              },
-            ]);
-
-          if (insertError) {
-            console.error("[Signup-OAuth] Error creating profile:", insertError);
-            await supabase.auth.signOut({ scope: "local" });
-            toast.error("This saved session is no longer valid. Please sign up again.");
-            return;
-          } else {
-            console.log("[Signup-OAuth] Profile created. Starting seeding...");
-            // Seed default data for new user
-            try {
-              await availabilityService.seedNewUser(user.id);
-              console.log("[Signup-OAuth] Seeding finished.");
-            } catch (seedError) {
-              console.error("[Signup-OAuth] Error during seeding:", seedError);
-            }
-          }
-        } else if (profile) {
-          console.log("[Signup-OAuth] Profile already exists.");
-          // Profile exists, update tokens if available
-          if (session.provider_token || session.provider_refresh_token) {
-            await supabase
-              .from("profiles")
-              .update({
-                google_access_token: session.provider_token,
-                google_refresh_token: session.provider_refresh_token,
-              })
-              .eq("id", user.id);
-          }
-        }
-        
         navigate("/admin");
       }
     };
@@ -219,6 +161,24 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      const { data: existingUsername, error: usernameError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (usernameError) {
+        toast.error("Could not validate username. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (existingUsername) {
+        toast.error("That username is already taken.");
+        setLoading(false);
+        return;
+      }
+
       // Create user in Supabase Auth (using a dummy password for now since we verified email)
       // Actually, Supabase doesn't allow creating user without password easily via client SDK if email is already verified by us.
       // But we can use signInWithOtp (magic link) or just signUp with a random password.
@@ -256,12 +216,19 @@ export default function SignupPage() {
 
         if (profileError) {
           console.error("[Signup-Email] Error inserting profile:", profileError);
-          toast.error(profileError.message);
+          if (authData.session) {
+            await ensureProfileForSession(authData.session, authData.user);
+            setStep(4);
+          } else {
+            toast.error(profileError.message);
+          }
         } else {
           console.log("[Signup-Email] Profile created. Starting seeding...");
-          // Seed default data for new user
           try {
-            await availabilityService.seedNewUser(authData.user.id);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              await ensureProfileForSession(session, authData.user);
+            }
             console.log("[Signup-Email] Seeding finished.");
           } catch (seedError) {
             console.error("[Signup-Email] Error during seeding:", seedError);

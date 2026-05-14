@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getValidatedSession, supabase } from '../lib/supabase';
+import { ensureProfileForSession } from '../services/profileService';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
@@ -18,10 +19,14 @@ export const LoginPage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
-    getValidatedSession().then(({ session, user }) => {
+    getValidatedSession().then(async ({ session, user }) => {
       if (isMounted && session && user) {
+        await ensureProfileForSession(session, user);
         navigate(from, { replace: true });
       }
+    }).catch((error) => {
+      console.error('Error ensuring profile before redirect:', error);
+      toast.error('We could not load your profile. Please try logging in again.');
     });
 
     return () => {
@@ -51,6 +56,10 @@ export const LoginPage: React.FC = () => {
         toast.error(error.message);
         setLoading(false);
       } else {
+        const { session, user } = await getValidatedSession();
+        if (session && user) {
+          await ensureProfileForSession(session, user);
+        }
         toast.success('Logged in successfully');
         navigate(from, { replace: true });
       }
