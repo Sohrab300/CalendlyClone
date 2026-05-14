@@ -1,3 +1,4 @@
+import "./src/lib/instrumentBackend";
 import * as Sentry from "@sentry/node";
 import express from "express";
 import { createServer as createViteServer } from "vite";
@@ -6,10 +7,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { google } from "googleapis";
 import { createClient } from "@supabase/supabase-js";
 import { sendOtpEmail } from "./src/services/emailService";
-import { initSentry } from "./src/lib/sentryBackend";
 
 dotenv.config();
-initSentry();
 
 type HostProfile = {
   id: string;
