@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
@@ -5,8 +6,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { google } from "googleapis";
 import { createClient } from "@supabase/supabase-js";
 import { sendOtpEmail } from "./src/services/emailService";
+import { initSentry } from "./src/lib/sentryBackend";
 
 dotenv.config();
+initSentry();
 
 type HostProfile = {
   id: string;
@@ -1012,6 +1015,21 @@ async function startServer() {
     }
   });
 
+  app.get("/api/sentry-test", (_req, res) => {
+    if (process.env.SENTRY_TEST_ENABLED !== "true") {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      return res.status(400).json({
+        error:
+          "Sentry backend test only runs when NODE_ENV is production and SENTRY_TEST_ENABLED is true",
+      });
+    }
+
+    throw new Error("Sentry backend test exception");
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -1022,6 +1040,8 @@ async function startServer() {
   } else {
     app.use(express.static("dist"));
   }
+
+  Sentry.setupExpressErrorHandler(app);
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

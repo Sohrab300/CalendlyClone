@@ -16,6 +16,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import SignupPage from './pages/SignupPage';
 import AuthCallback from './pages/AuthCallback';
+import SentryTestPage from './pages/SentryTestPage';
 import { LoginPage } from './pages/LoginPage';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/admin/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/__sentry-test" element={<SentryTestPage />} />
           <Route 
             path="/admin/*" 
             element={
