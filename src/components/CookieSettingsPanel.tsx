@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Plus, Minus } from "lucide-react";
 import { cn } from "../lib/utils";
+import { BrandLogo } from "./BrandLogo";
 
 interface CookieSettingsPanelProps {
   isOpen: boolean;
@@ -45,15 +46,9 @@ const CookieSettingsPanel: React.FC<CookieSettingsPanelProps> = ({
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              {/* logo */}
               <div className="flex items-center gap-2">
-                <div className="text-blue-600 font-bold text-2xl flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center relative">
-                    <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center overflow-hidden">
-                      <div className="w-full h-1/2 bg-blue-600 absolute bottom-0" />
-                    </div>
-                  </div>
-                  <span className="tracking-tight">Calendly</span>
-                </div>
+                <BrandLogo iconClassName="h-8 w-8" />
               </div>
               <button
                 onClick={onClose}
@@ -140,13 +135,6 @@ const CookieSettingsPanel: React.FC<CookieSettingsPanelProps> = ({
                 >
                   Confirm My Choices
                 </button>
-              </div>
-              <div className="flex justify-center items-center gap-1 text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
-                <span>Powered by</span>
-                <span className="text-slate-600 flex items-center gap-0.5">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full" />
-                  OneTrust
-                </span>
               </div>
             </div>
           </motion.div>
