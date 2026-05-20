@@ -81,7 +81,7 @@ export default function CaseStudiesPage() {
           >
             <div className="absolute bottom-[140px] left-5 top-[120px] w-px bg-slate-200 md:left-1/2 md:-translate-x-1/2" />
             <motion.div
-              className="absolute -bottom-[80px] left-5 top-[120px] w-0.5 origin-top bg-blue-600 md:left-1/2 md:-translate-x-1/2"
+              className="absolute bottom-[20px] left-5 top-[100px] w-0.5 origin-top bg-blue-600 md:left-1/2 md:-translate-x-1/2"
               style={{ scaleY }}
             />
 
