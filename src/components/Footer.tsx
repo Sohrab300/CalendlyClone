@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { BrandLogo } from "./BrandLogo";
 
 const githubUrl = "https://github.com/Sohrab300/CalendlyClone";
 
@@ -12,7 +13,7 @@ export function Footer() {
             to="/"
             className="text-xl font-black tracking-tight text-blue-700"
           >
-            DEVSCHEDULE
+            <BrandLogo iconClassName="h-10 w-10" />
           </Link>
           <p className="mt-3 text-xs font-semibold text-slate-600">
             © 2026 DevSchedule. Educational Project for Developer Portfolio.
