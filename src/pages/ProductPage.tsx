@@ -19,7 +19,14 @@ const stackGroups = [
     title: "Frontend",
     icon: Layers,
     tone: "bg-blue-50 text-blue-700 border-blue-200",
-    tags: ["React 19", "TypeScript", "Vite", "Tailwind CSS", "React Router", "Motion"],
+    tags: [
+      "React 19",
+      "TypeScript",
+      "Vite",
+      "Tailwind CSS",
+      "React Router",
+      "Motion",
+    ],
   },
   {
     title: "Backend",
@@ -43,7 +50,12 @@ const stackGroups = [
     title: "Email & Calendar",
     icon: Mail,
     tone: "bg-teal-50 text-teal-700 border-teal-200",
-    tags: ["Nodemailer", "Google Calendar API", "Google Meet", "iCal Generation"],
+    tags: [
+      "Nodemailer",
+      "Google Calendar API",
+      "Google Meet",
+      "iCal Generation",
+    ],
   },
   {
     title: "Deployment & Tooling",
@@ -155,4 +167,3 @@ export default function ProductPage() {
     </main>
   );
 }
-

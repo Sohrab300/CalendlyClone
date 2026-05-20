@@ -54,13 +54,15 @@ const featureCards = [
   },
   {
     title: "Full Admin Dashboard",
-    description: "Manage event types, availability, branding, contacts, and meetings.",
+    description:
+      "Manage event types, availability, branding, contacts, and meetings.",
     icon: Grid2X2,
     tone: "bg-blue-50 text-blue-700",
   },
   {
     title: "High-Fidelity UI",
-    description: "Pixel-accurate recreation of Calendly's UI using React 19 and Tailwind CSS.",
+    description:
+      "Pixel-accurate recreation of Calendly's UI using React 19 and Tailwind CSS.",
     icon: Code2,
     tone: "bg-teal-50 text-teal-700",
   },
@@ -82,11 +84,13 @@ export default function FeaturesPage() {
           <div className="text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-teal-700">
               <Code2 className="h-3.5 w-3.5" />
-              // Architecture
+              Architecture
             </div>
             <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
               Everything You&apos;d Expect.
-              <span className="block text-blue-700">Built by One Developer.</span>
+              <span className="block text-blue-700">
+                Built by One Developer.
+              </span>
             </h1>
             <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
               A real-world scheduling product with a complete booking flow,
@@ -131,4 +135,3 @@ export default function FeaturesPage() {
     </main>
   );
 }
-

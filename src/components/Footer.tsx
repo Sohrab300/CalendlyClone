@@ -22,9 +22,6 @@ export function Footer() {
           </p>
         </div>
         <div className="flex flex-wrap gap-6 text-[11px] font-bold uppercase tracking-wide text-slate-600">
-          <Link to="/features" className="hover:text-slate-950">
-            Documentation
-          </Link>
           <a
             href={githubUrl}
             target="_blank"

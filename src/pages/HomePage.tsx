@@ -39,7 +39,22 @@ const highlights = [
 ];
 
 const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const dates = ["28", "29", "30", "31", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+const dates = [
+  "28",
+  "29",
+  "30",
+  "31",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+];
 const slots = ["09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM"];
 
 export default function HomePage() {
@@ -57,8 +72,8 @@ export default function HomePage() {
             Scheduling. Reimagined by a Developer.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
-            A Calendly-inspired clone built to master full-stack development
-            and high-fidelity UI design.
+            A Calendly-inspired clone built to master full-stack development and
+            high-fidelity UI design.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
@@ -208,4 +223,3 @@ export default function HomePage() {
     </main>
   );
 }
-

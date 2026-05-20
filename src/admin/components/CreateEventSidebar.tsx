@@ -3042,9 +3042,9 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                                 Connect a payment processor
                               </h4>
                               <p className="text-sm text-slate-600 leading-relaxed max-w-[280px] mx-auto">
-                                To collect payments with Calendly, you must
+                                To collect payments with DevSchedule, you must
                                 first connect either Stripe or PayPal to your
-                                Calendly account.
+                                DevSchedule account.
                               </p>
                             </div>
                             <div className="relative inline-block">
