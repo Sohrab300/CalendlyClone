@@ -12,13 +12,16 @@ export default function PrivacyPolicy() {
           <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 md:text-5xl">
             Privacy Policy
           </h1>
-          <p className="mt-4 text-slate-600 font-medium">Last updated: May 2026</p>
+          <p className="mt-4 text-slate-600 font-medium">
+            Last updated: May 2026
+          </p>
         </div>
 
         <div className="mb-10 rounded-xl border border-blue-100 bg-blue-50/50 p-6 text-center">
           <p className="text-sm leading-relaxed text-blue-800">
-            <span className="font-bold">Note:</span> This is an educational project inspired by
-            Calendly. We take your privacy seriously even as a learning project.
+            <span className="font-bold">Note:</span> This is an educational
+            project inspired by Calendly. We take your privacy seriously even as
+            a learning project.
           </p>
         </div>
 
@@ -28,8 +31,8 @@ export default function PrivacyPolicy() {
               Who We Are
             </h2>
             <p className="mt-4 text-slate-600 leading-relaxed">
-              This app is a Calendly-inspired scheduling tool built as a personal educational
-              project. It is not affiliated with Calendly.
+              This app is a Calendly-inspired scheduling tool built as a
+              personal educational project. It is not affiliated with Calendly.
             </p>
           </section>
 
@@ -51,8 +54,9 @@ export default function PrivacyPolicy() {
               How We Use Your Data
             </h2>
             <p className="mt-4 text-slate-600 leading-relaxed">
-              To create your account, send booking confirmation emails on your behalf via Gmail, add
-              events to your Google Calendar, and manage your scheduling links.
+              To create your account, send booking confirmation emails on your
+              behalf via Gmail, add events to your Google Calendar, and manage
+              your scheduling links.
             </p>
           </section>
 
@@ -61,9 +65,9 @@ export default function PrivacyPolicy() {
               Google API Permissions
             </h2>
             <p className="mt-4 text-slate-600 leading-relaxed">
-              We request access to your Google Calendar and Gmail (send only) solely to provide core
-              scheduling features. We do not read your existing emails or calendar events beyond
-              what is necessary.
+              We request access to your Google Calendar and Gmail (send only)
+              solely to provide core scheduling features. We do not read your
+              existing emails or calendar events beyond what is necessary.
             </p>
           </section>
 
@@ -72,8 +76,8 @@ export default function PrivacyPolicy() {
               Data Storage
             </h2>
             <p className="mt-4 text-slate-600 leading-relaxed">
-              Your data is stored securely using Supabase. We do not sell, share, or rent your data
-              to any third party.
+              Your data is stored securely using Supabase. We do not sell,
+              share, or rent your data to any third party.
             </p>
           </section>
 
@@ -82,8 +86,8 @@ export default function PrivacyPolicy() {
               Third-Party Services
             </h2>
             <p className="mt-4 text-slate-600 leading-relaxed">
-              We use Google OAuth, Google Calendar API, Gmail API, Supabase, and Vercel. Each has
-              their own privacy policies.
+              We use Google OAuth, Google Calendar API, Gmail API, Supabase, and
+              Vercel. Each has their own privacy policies.
             </p>
           </section>
 
@@ -92,7 +96,8 @@ export default function PrivacyPolicy() {
               Your Rights
             </h2>
             <p className="mt-4 text-slate-600 leading-relaxed">
-              You can request deletion of your account and data at any time by contacting us.
+              You can request deletion of your account and data at any time by
+              contacting us.
             </p>
           </section>
 
@@ -101,8 +106,11 @@ export default function PrivacyPolicy() {
               Contact
             </h2>
             <p className="mt-4 text-slate-600 leading-relaxed">
-              <a href="mailto:privacy@yourcalendlyclone.com" className="text-blue-600 hover:underline">
-                privacy@yourcalendlyclone.com
+              <a
+                href="mailto:sheikhsohrab618@gmail.com"
+                className="text-blue-600 hover:underline"
+              >
+                sheikhsohrab618@gmail.com
               </a>
             </p>
           </section>
