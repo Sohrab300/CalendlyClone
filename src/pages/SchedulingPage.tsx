@@ -616,7 +616,7 @@ export default function SchedulingPage() {
     <div className="min-h-screen flex items-center justify-center p-0 md:p-4 lg:p-8 bg-slate-50">
       <motion.div
         layout
-        className="bg-[#fafafa] rounded-none md:rounded-sm shadow-2xl shadow-slate-200 border-none md:border border-slate-200 w-full max-w-5xl min-h-screen md:min-h-[750px] flex flex-col lg:flex-row overflow-hidden relative"
+        className="bg-[#fafafa] rounded-none md:rounded-sm shadow-2xl shadow-slate-200 border-none md:border border-slate-200 w-full max-w-5xl h-screen md:h-[750px] flex flex-col lg:flex-row overflow-hidden relative"
       >
         <AnimatePresence mode="wait">
           {view === "success" ? (
@@ -689,10 +689,10 @@ export default function SchedulingPage() {
                 key="main-content"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="w-full lg:w-[75%] flex flex-col"
+                className="w-full lg:w-[75%] flex flex-col min-h-0"
               >
                 {view === "calendar" ? (
-                  <div className="flex flex-col md:flex-row w-full h-full">
+                  <div className="flex flex-col md:flex-row w-full h-full min-h-0">
                     {/* Date Selection View */}
                     <div
                       className={cn(
@@ -727,7 +727,7 @@ export default function SchedulingPage() {
                       <motion.div
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="w-full md:w-[40%] bg-white border border-red-500"
+                        className="w-full md:w-[40%] h-full min-h-0 bg-white flex flex-col"
                       >
                         <div className="md:hidden p-4 border-b border-gray-200 flex flex-col items-center gap-4">
                           <button
@@ -790,7 +790,7 @@ export default function SchedulingPage() {
                           </div>
                         )}
 
-                        <div className="py-4 md:p-0 md:pt-24 flex flex-col min-h-0">
+                        <div className="py-4 md:p-0 md:pt-24 flex flex-1 flex-col min-h-0 overflow-hidden">
                           <div className="hidden md:block mb-6 ml-4">
                             <h3 className="text-slate-800 font-medium">
                               {format(selectedDate, "EEEE, MMMM d")}
