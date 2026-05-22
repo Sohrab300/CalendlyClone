@@ -5,6 +5,11 @@ import { ensureProfileForSession } from '../services/profileService';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
+import {
+  buildOAuthRedirectUrl,
+  logOAuthDebug,
+  rememberOAuthAttempt,
+} from '../lib/authDebug';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,8 +25,18 @@ export const LoginPage: React.FC = () => {
     let isMounted = true;
 
     getValidatedSession().then(async ({ session, user }) => {
+      logOAuthDebug('Login page existing session check completed', {
+        hasSession: Boolean(session),
+        userId: user?.id,
+        userEmail: user?.email,
+        redirectAfterLogin: from,
+      });
+
       if (isMounted && session && user) {
         await ensureProfileForSession(session, user);
+        logOAuthDebug('Login page existing session profile ensured; navigating', {
+          redirectAfterLogin: from,
+        });
         navigate(from, { replace: true });
       }
     }).catch((error) => {
@@ -80,13 +95,33 @@ export const LoginPage: React.FC = () => {
   };
 
   const handleSocialLogin = async (provider: 'google' | 'azure') => {
+    const redirectTo = buildOAuthRedirectUrl('/auth/callback');
+
+    rememberOAuthAttempt({
+      flow: 'login',
+      provider,
+      redirectTo,
+      startedAt: new Date().toISOString(),
+    });
+    logOAuthDebug('Starting login OAuth', {
+      provider,
+      redirectTo,
+      redirectAfterLogin: from,
+    });
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: window.location.origin + '/admin',
+        redirectTo,
       }
     });
-    if (error) toast.error(error.message);
+    if (error) {
+      logOAuthDebug('Login OAuth failed to start', {
+        provider,
+        errorMessage: error.message,
+      });
+      toast.error(error.message);
+    }
   };
 
   return (
