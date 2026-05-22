@@ -4,7 +4,6 @@ import { getValidatedSession, supabase } from '../lib/supabase';
 import { ensureProfileForSession } from '../services/profileService';
 import { Loader2 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
-import { logOAuthDebug, readOAuthAttempt } from '../lib/authDebug';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -15,55 +14,24 @@ export default function AuthCallback() {
       if (callbackHandledRef.current) return;
       callbackHandledRef.current = true;
 
-      logOAuthDebug('Auth callback page loaded', {
-        previousAttempt: readOAuthAttempt(),
-        hasSearchCode: new URLSearchParams(window.location.search).has('code'),
-        hasSearchError: new URLSearchParams(window.location.search).has('error'),
-        hasHashAccessToken: new URLSearchParams(window.location.hash.replace(/^#/, '')).has('access_token'),
-        hasHashError: new URLSearchParams(window.location.hash.replace(/^#/, '')).has('error'),
-      });
-
       const { session, user, error } = await getValidatedSession();
-      logOAuthDebug('Auth callback session validation completed', {
-        hasSession: Boolean(session),
-        userId: user?.id,
-        userEmail: user?.email,
-        errorMessage: error?.message,
-      });
       
       if (error) {
-        console.error('Auth callback error:', error.message);
         navigate('/admin/login');
         return;
       }
 
       if (session && user) {
-        console.log("[AuthCallback] Session found for user:", user.id);
-        
         try {
           await ensureProfileForSession(session, user);
-          logOAuthDebug('Auth callback profile ensured', {
-            userId: user.id,
-          });
-        } catch (profileError) {
-          console.error("[AuthCallback] Error ensuring profile:", profileError);
-          logOAuthDebug('Auth callback profile ensure failed; signing out', {
-            userId: user.id,
-            errorMessage:
-              profileError instanceof Error
-                ? profileError.message
-                : String(profileError),
-          });
+        } catch {
           await supabase.auth.signOut({ scope: "local" });
           navigate('/admin/login');
           return;
         }
 
-        console.log("[AuthCallback] Redirecting to /admin...");
-        logOAuthDebug('Auth callback navigating to admin');
         navigate('/admin');
       } else {
-        logOAuthDebug('Auth callback had no valid session; navigating to login');
         navigate('/admin/login');
       }
     };

@@ -15,12 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BrandLogo } from "../components/BrandLogo";
-import {
-  buildOAuthRedirectUrl,
-  logOAuthDebug,
-  readOAuthAttempt,
-  rememberOAuthAttempt,
-} from "../lib/authDebug";
+import { buildOAuthRedirectUrl } from "../lib/authDebug";
 
 type SignupStep = 1 | 2 | 3 | 4;
 
@@ -65,39 +60,18 @@ export default function SignupPage() {
       if (authCallbackHandledRef.current) return;
       authCallbackHandledRef.current = true;
 
-      logOAuthDebug("Signup OAuth callback detected", {
-        previousAttempt: readOAuthAttempt(),
-        hasSearchCode: new URLSearchParams(window.location.search).has("code"),
-        hasHashAccessToken: new URLSearchParams(window.location.hash.replace(/^#/, "")).has("access_token"),
-      });
-
-      const { session, user, error } = await getValidatedSession();
-      logOAuthDebug("Signup OAuth session validation completed", {
-        hasSession: Boolean(session),
-        userId: user?.id,
-        userEmail: user?.email,
-        errorMessage: error?.message,
-      });
+      const { session, user } = await getValidatedSession();
 
       if (session && user) {
         try {
           await ensureProfileForSession(session, user);
-          logOAuthDebug("Signup OAuth profile ensured", {
-            userId: user.id,
-          });
         } catch {
-          logOAuthDebug("Signup OAuth profile ensure failed; signing out", {
-            userId: user.id,
-          });
           await supabase.auth.signOut({ scope: "local" });
           toast.error("We could not finish setting up your profile. Please try again.");
           return;
         }
 
-        logOAuthDebug("Signup OAuth navigating to admin");
         navigate("/admin");
-      } else {
-        logOAuthDebug("Signup OAuth callback did not produce a valid session");
       }
     };
 
@@ -106,21 +80,8 @@ export default function SignupPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    const redirectTo = buildOAuthRedirectUrl("/signup");
+    const redirectTo = buildOAuthRedirectUrl("/auth/callback");
     const scopes = "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.send";
-
-    rememberOAuthAttempt({
-      flow: "signup",
-      provider: "google",
-      redirectTo,
-      scopes,
-      startedAt: new Date().toISOString(),
-    });
-    logOAuthDebug("Starting signup Google OAuth", {
-      provider: "google",
-      redirectTo,
-      scopes,
-    });
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -134,9 +95,6 @@ export default function SignupPage() {
       },
     });
     if (error) {
-      logOAuthDebug("Signup Google OAuth failed to start", {
-        errorMessage: error.message,
-      });
       toast.error(error.message);
       setLoading(false);
     }
