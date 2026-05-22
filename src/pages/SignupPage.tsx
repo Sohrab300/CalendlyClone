@@ -18,6 +18,16 @@ import { BrandLogo } from "../components/BrandLogo";
 
 type SignupStep = 1 | 2 | 3 | 4;
 
+const readApiResponse = async (response: Response) => {
+  const text = await response.text();
+
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { error: text || response.statusText, rawResponse: text };
+  }
+};
+
 const hasOAuthCallbackParams = () => {
   const searchParams = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -98,7 +108,18 @@ export default function SignupPage() {
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
+      const data = await readApiResponse(response);
+      if (!response.ok) {
+        console.error("[Signup] Send OTP failed", {
+          status: response.status,
+          statusText: response.statusText,
+          diagnosticCode: data.diagnosticCode,
+          requestId: data.requestId,
+          error: data.error,
+          rawResponse: data.rawResponse,
+        });
+      }
+
       if (response.ok) {
         toast.success("OTP sent to your email");
         setStep(2);
@@ -106,6 +127,7 @@ export default function SignupPage() {
         toast.error(data.error || "Failed to send OTP");
       }
     } catch (err) {
+      console.error("[Signup] Send OTP request error", err);
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
@@ -125,13 +147,25 @@ export default function SignupPage() {
         body: JSON.stringify({ email, code }),
       });
 
-      const data = await response.json();
+      const data = await readApiResponse(response);
+      if (!response.ok) {
+        console.error("[Signup] Verify OTP failed", {
+          status: response.status,
+          statusText: response.statusText,
+          diagnosticCode: data.diagnosticCode,
+          requestId: data.requestId,
+          error: data.error,
+          rawResponse: data.rawResponse,
+        });
+      }
+
       if (response.ok) {
         setStep(3);
       } else {
         toast.error(data.error || "Invalid or expired OTP. Please try again.");
       }
     } catch (err) {
+      console.error("[Signup] Verify OTP request error", err);
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
