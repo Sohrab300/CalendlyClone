@@ -1,5 +1,4 @@
 import nodemailer from "nodemailer";
-import { getErrorDetails, maskEmail } from "./logging";
 
 const getEmailCredentials = () => {
   const emailUser = process.env.EMAIL_USER?.trim();
@@ -15,13 +14,6 @@ const getEmailCredentials = () => {
 export const sendOtpEmail = async (toEmail: string, otp: string) => {
   try {
     const { emailUser, emailPass } = getEmailCredentials();
-    console.info("[EmailService] Preparing OTP email", {
-      toEmail: maskEmail(toEmail),
-      fromEmail: maskEmail(emailUser),
-      hasEmailUser: Boolean(emailUser),
-      hasEmailPass: Boolean(emailPass),
-    });
-
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -49,16 +41,8 @@ export const sendOtpEmail = async (toEmail: string, otp: string) => {
         </div>
       `,
     });
-
-    console.info("[EmailService] OTP email sent", {
-      toEmail: maskEmail(toEmail),
-    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[EmailService] OTP email failed", {
-      toEmail: maskEmail(toEmail),
-      error: getErrorDetails(error),
-    });
     throw new Error(`Failed to send OTP email via Nodemailer: ${message}`);
   }
 };

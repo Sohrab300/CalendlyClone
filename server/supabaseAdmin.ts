@@ -7,13 +7,6 @@ export const createSupabaseAdminClient = () => {
     process.env.VITE_SUPABASE_ANON_KEY ||
     "";
 
-  console.info("[SupabaseAdmin] Environment check", {
-    hasSupabaseUrl: Boolean(supabaseUrl),
-    hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    hasAnonFallbackKey: Boolean(process.env.VITE_SUPABASE_ANON_KEY),
-    usingAnonFallback: !process.env.SUPABASE_SERVICE_ROLE_KEY,
-  });
-
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error(
       "VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured",

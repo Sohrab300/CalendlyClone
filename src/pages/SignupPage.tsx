@@ -63,8 +63,7 @@ export default function SignupPage() {
       if (session && user) {
         try {
           await ensureProfileForSession(session, user);
-        } catch (error) {
-          console.error("[Signup-OAuth] Error ensuring profile:", error);
+        } catch {
           await supabase.auth.signOut({ scope: "local" });
           toast.error("We could not finish setting up your profile. Please try again.");
           return;
@@ -109,25 +108,13 @@ export default function SignupPage() {
       });
 
       const data = await readApiResponse(response);
-      if (!response.ok) {
-        console.error("[Signup] Send OTP failed", {
-          status: response.status,
-          statusText: response.statusText,
-          diagnosticCode: data.diagnosticCode,
-          requestId: data.requestId,
-          error: data.error,
-          rawResponse: data.rawResponse,
-        });
-      }
-
       if (response.ok) {
         toast.success("OTP sent to your email");
         setStep(2);
       } else {
         toast.error(data.error || "Failed to send OTP");
       }
-    } catch (err) {
-      console.error("[Signup] Send OTP request error", err);
+    } catch {
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
@@ -148,24 +135,12 @@ export default function SignupPage() {
       });
 
       const data = await readApiResponse(response);
-      if (!response.ok) {
-        console.error("[Signup] Verify OTP failed", {
-          status: response.status,
-          statusText: response.statusText,
-          diagnosticCode: data.diagnosticCode,
-          requestId: data.requestId,
-          error: data.error,
-          rawResponse: data.rawResponse,
-        });
-      }
-
       if (response.ok) {
         setStep(3);
       } else {
         toast.error(data.error || "Invalid or expired OTP. Please try again.");
       }
-    } catch (err) {
-      console.error("[Signup] Verify OTP request error", err);
+    } catch {
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
@@ -249,7 +224,6 @@ export default function SignupPage() {
           ]);
 
         if (profileError) {
-          console.error("[Signup-Email] Error inserting profile:", profileError);
           if (authData.session) {
             await ensureProfileForSession(authData.session, authData.user);
             setStep(4);
@@ -257,15 +231,13 @@ export default function SignupPage() {
             toast.error(profileError.message);
           }
         } else {
-          console.log("[Signup-Email] Profile created. Starting seeding...");
           try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
               await ensureProfileForSession(session, authData.user);
             }
-            console.log("[Signup-Email] Seeding finished.");
-          } catch (seedError) {
-            console.error("[Signup-Email] Error during seeding:", seedError);
+          } catch {
+            toast.error("Your account was created, but setup did not finish. Please sign in again.");
           }
           setStep(4);
         }

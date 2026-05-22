@@ -6,45 +6,14 @@ const getBody = (body: unknown) => {
   return body && typeof body === "object" ? body : {};
 };
 
-const getRequestId = (req: any) => {
-  const vercelId = req.headers?.["x-vercel-id"];
-  const requestId = req.headers?.["x-request-id"];
-
-  if (typeof vercelId === "string") return vercelId;
-  if (Array.isArray(vercelId) && vercelId[0]) return vercelId[0];
-  if (typeof requestId === "string") return requestId;
-  if (Array.isArray(requestId) && requestId[0]) return requestId[0];
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-};
-
-const maskEmail = (email?: string) => {
-  if (!email) return "";
-
-  const [localPart, domain = ""] = email.split("@");
-  const maskedLocal =
-    localPart.length <= 2
-      ? `${localPart[0] || "*"}***`
-      : `${localPart.slice(0, 2)}***${localPart.slice(-1)}`;
-
-  return domain ? `${maskedLocal}@${domain}` : maskedLocal;
-};
-
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : String(error);
-
 const sendJson = (res: any, status: number, body: Record<string, unknown>) =>
   res.status(status).json(body);
 
 export default async function handler(req: any, res: any) {
-  const requestId = getRequestId(req);
-
   try {
     if (req.method !== "POST") {
       return sendJson(res, 405, {
         error: "Method not allowed",
-        diagnosticCode: "method_not_allowed",
-        requestId,
       });
     }
 
@@ -54,8 +23,6 @@ export default async function handler(req: any, res: any) {
     if (!email) {
       return sendJson(res, 400, {
         error: "Email is required",
-        diagnosticCode: "email_missing",
-        requestId,
       });
     }
 
@@ -66,17 +33,13 @@ export default async function handler(req: any, res: any) {
 
     if (!supabaseUrl || !supabaseKey) {
       return sendJson(res, 500, {
-        error: "Supabase server environment variables are missing",
-        diagnosticCode: "supabase_env_missing",
-        requestId,
+        error: "Failed to send verification code",
       });
     }
 
     if (!emailUser || !emailPass) {
       return sendJson(res, 500, {
-        error: "Email server environment variables are missing",
-        diagnosticCode: "email_env_missing",
-        requestId,
+        error: "Failed to send verification code",
       });
     }
 
@@ -94,16 +57,8 @@ export default async function handler(req: any, res: any) {
       .eq("email", email);
 
     if (deleteResult.error) {
-      console.error("[send-signup-otp] DB delete failed", {
-        requestId,
-        email: maskEmail(email),
-        error: deleteResult.error,
-      });
-
       return sendJson(res, 500, {
-        error: "Failed to reset verification code",
-        diagnosticCode: "db_delete_failed",
-        requestId,
+        error: "Failed to send verification code",
       });
     }
 
@@ -115,16 +70,8 @@ export default async function handler(req: any, res: any) {
       .insert([{ email, code, expires_at: expiresAt }]);
 
     if (insertResult.error) {
-      console.error("[send-signup-otp] DB insert failed", {
-        requestId,
-        email: maskEmail(email),
-        error: insertResult.error,
-      });
-
       return sendJson(res, 500, {
-        error: "Failed to store verification code",
-        diagnosticCode: "db_insert_failed",
-        requestId,
+        error: "Failed to send verification code",
       });
     }
 
@@ -157,31 +104,15 @@ export default async function handler(req: any, res: any) {
         `,
       });
     } catch (error) {
-      console.error("[send-signup-otp] Email send failed", {
-        requestId,
-        email: maskEmail(email),
-        error: getErrorMessage(error),
-      });
-
       return sendJson(res, 500, {
-        error: "Failed to send verification email",
-        diagnosticCode: "email_send_failed",
-        requestId,
+        error: "Failed to send verification code",
       });
     }
 
-    return sendJson(res, 200, { success: true, requestId });
+    return sendJson(res, 200, { success: true });
   } catch (error) {
-    console.error("[send-signup-otp] Unexpected failure", {
-      requestId,
-      error: getErrorMessage(error),
-    });
-
     return sendJson(res, 500, {
-      error: "Unexpected server error",
-      diagnosticCode: "unexpected_server_error",
-      requestId,
-      details: getErrorMessage(error),
+      error: "Failed to send verification code",
     });
   }
 }
