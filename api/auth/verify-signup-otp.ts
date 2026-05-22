@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createSupabaseAdminClient } from "../../server/supabaseAdmin";
 import { OtpServiceError, verifyOtp } from "../../server/otpService";
 import { getErrorDetails, maskEmail } from "../../server/logging";
@@ -10,26 +11,35 @@ const getBody = (body: unknown) => {
   return body && typeof body === "object" ? body : {};
 };
 
+const getRequestId = (req: any) => {
+  const vercelId = req.headers?.["x-vercel-id"];
+  const requestId = req.headers?.["x-request-id"];
+
+  if (typeof vercelId === "string") return vercelId;
+  if (Array.isArray(vercelId) && vercelId[0]) return vercelId[0];
+  if (typeof requestId === "string") return requestId;
+  if (Array.isArray(requestId) && requestId[0]) return requestId[0];
+
+  return randomUUID();
+};
+
 export default async function handler(req: any, res: any) {
-  const requestId =
-    req.headers?.["x-vercel-id"] ||
-    req.headers?.["x-request-id"] ||
-    crypto.randomUUID();
+  const requestId = getRequestId(req);
 
-  console.info("[API verify-signup-otp] Request received", {
-    requestId,
-    method: req.method,
-  });
-
-  if (req.method !== "POST") {
-    console.warn("[API verify-signup-otp] Method not allowed", {
+  try {
+    console.info("[API verify-signup-otp] Request received", {
       requestId,
       method: req.method,
     });
-    return res.status(405).json({ error: "Method not allowed" });
-  }
 
-  try {
+    if (req.method !== "POST") {
+      console.warn("[API verify-signup-otp] Method not allowed", {
+        requestId,
+        method: req.method,
+      });
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
     const body = getBody(req.body) as { email?: string; code?: string };
     if (!body.email || !body.code) {
       console.warn("[API verify-signup-otp] Missing email or code", {
