@@ -1,8 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { createSupabaseAdminClient } from "../../server/supabaseAdmin";
-import { OtpServiceError, verifyOtp } from "../../server/otpService";
-import { getErrorDetails, maskEmail } from "../../server/logging";
-
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
     return JSON.parse(body || "{}");
@@ -20,72 +15,127 @@ const getRequestId = (req: any) => {
   if (typeof requestId === "string") return requestId;
   if (Array.isArray(requestId) && requestId[0]) return requestId[0];
 
-  return randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
+
+const maskEmail = (email?: string) => {
+  if (!email) return "";
+
+  const [localPart, domain = ""] = email.split("@");
+  const maskedLocal =
+    localPart.length <= 2
+      ? `${localPart[0] || "*"}***`
+      : `${localPart.slice(0, 2)}***${localPart.slice(-1)}`;
+
+  return domain ? `${maskedLocal}@${domain}` : maskedLocal;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+const sendJson = (res: any, status: number, body: Record<string, unknown>) =>
+  res.status(status).json(body);
 
 export default async function handler(req: any, res: any) {
   const requestId = getRequestId(req);
 
   try {
-    console.info("[API verify-signup-otp] Request received", {
-      requestId,
-      method: req.method,
-    });
-
     if (req.method !== "POST") {
-      console.warn("[API verify-signup-otp] Method not allowed", {
+      return sendJson(res, 405, {
+        error: "Method not allowed",
+        diagnosticCode: "method_not_allowed",
         requestId,
-        method: req.method,
       });
-      return res.status(405).json({ error: "Method not allowed" });
     }
 
     const body = getBody(req.body) as { email?: string; code?: string };
-    if (!body.email || !body.code) {
-      console.warn("[API verify-signup-otp] Missing email or code", {
+    const email = body.email?.trim().toLowerCase();
+    const code = body.code?.trim();
+
+    if (!email || !code) {
+      return sendJson(res, 400, {
+        error: "Email and code are required",
+        diagnosticCode: "verification_input_missing",
         requestId,
-        hasEmail: Boolean(body.email),
-        hasCode: Boolean(body.code),
       });
-      return res.status(400).json({ error: "Email and code are required" });
     }
 
-    console.info("[API verify-signup-otp] Creating Supabase client", {
-      requestId,
-      email: maskEmail(body.email),
-      codeLength: body.code.length,
-    });
+    const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-    const supabaseAdmin = createSupabaseAdminClient();
-    await verifyOtp(supabaseAdmin, body.email, body.code, requestId);
+    if (!supabaseUrl || !supabaseKey) {
+      return sendJson(res, 500, {
+        error: "Supabase server environment variables are missing",
+        diagnosticCode: "supabase_env_missing",
+        requestId,
+      });
+    }
 
-    console.info("[API verify-signup-otp] Request completed", {
-      requestId,
-      email: maskEmail(body.email),
-    });
-    return res.status(200).json({ success: true });
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+    const { data, error } = await supabaseAdmin
+      .from("verification_codes")
+      .select("*")
+      .eq("email", email)
+      .eq("code", code)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      console.warn("[verify-signup-otp] OTP not found", {
+        requestId,
+        email: maskEmail(email),
+        error,
+      });
+
+      return sendJson(res, 400, {
+        error: "Invalid verification code",
+        diagnosticCode: "otp_not_found",
+        requestId,
+      });
+    }
+
+    if (new Date() > new Date(data.expires_at)) {
+      return sendJson(res, 400, {
+        error: "Verification code has expired",
+        diagnosticCode: "otp_expired",
+        requestId,
+      });
+    }
+
+    const deleteResult = await supabaseAdmin
+      .from("verification_codes")
+      .delete()
+      .eq("email", email);
+
+    if (deleteResult.error) {
+      console.error("[verify-signup-otp] DB delete failed", {
+        requestId,
+        email: maskEmail(email),
+        error: deleteResult.error,
+      });
+
+      return sendJson(res, 500, {
+        error: "Failed to complete verification",
+        diagnosticCode: "db_verified_delete_failed",
+        requestId,
+      });
+    }
+
+    return sendJson(res, 200, { success: true, requestId });
   } catch (error) {
-    console.error("[API verify-signup-otp] Request failed", {
+    console.error("[verify-signup-otp] Unexpected failure", {
       requestId,
-      error: getErrorDetails(error),
+      error: getErrorMessage(error),
     });
 
-    if (error instanceof OtpServiceError) {
-      return res.status(error.statusCode).json({
-        error: error.message,
-        diagnosticCode: error.diagnosticCode,
-        requestId,
-      });
-    }
-
-    return res.status(500).json({
-      error: "Verification failed",
-      diagnosticCode:
-        error instanceof Error &&
-        error.message.includes("SUPABASE_SERVICE_ROLE_KEY")
-          ? "server_env_missing"
-          : "unexpected_server_error",
+    return sendJson(res, 500, {
+      error: "Unexpected server error",
+      diagnosticCode: "unexpected_server_error",
       requestId,
+      details: getErrorMessage(error),
     });
   }
 }

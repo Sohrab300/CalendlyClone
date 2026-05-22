@@ -1,8 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { createSupabaseAdminClient } from "../../server/supabaseAdmin";
-import { OtpServiceError, sendOtp } from "../../server/otpService";
-import { getErrorDetails, maskEmail } from "../../server/logging";
-
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
     return JSON.parse(body || "{}");
@@ -20,67 +15,173 @@ const getRequestId = (req: any) => {
   if (typeof requestId === "string") return requestId;
   if (Array.isArray(requestId) && requestId[0]) return requestId[0];
 
-  return randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
+
+const maskEmail = (email?: string) => {
+  if (!email) return "";
+
+  const [localPart, domain = ""] = email.split("@");
+  const maskedLocal =
+    localPart.length <= 2
+      ? `${localPart[0] || "*"}***`
+      : `${localPart.slice(0, 2)}***${localPart.slice(-1)}`;
+
+  return domain ? `${maskedLocal}@${domain}` : maskedLocal;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
+
+const sendJson = (res: any, status: number, body: Record<string, unknown>) =>
+  res.status(status).json(body);
 
 export default async function handler(req: any, res: any) {
   const requestId = getRequestId(req);
 
   try {
-    console.info("[API send-signup-otp] Request received", {
-      requestId,
-      method: req.method,
-    });
-
     if (req.method !== "POST") {
-      console.warn("[API send-signup-otp] Method not allowed", {
+      return sendJson(res, 405, {
+        error: "Method not allowed",
+        diagnosticCode: "method_not_allowed",
         requestId,
-        method: req.method,
       });
-      return res.status(405).json({ error: "Method not allowed" });
     }
 
     const body = getBody(req.body) as { email?: string };
-    if (!body.email) {
-      console.warn("[API send-signup-otp] Missing email", { requestId });
-      return res.status(400).json({ error: "Email is required" });
-    }
+    const email = body.email?.trim().toLowerCase();
 
-    console.info("[API send-signup-otp] Creating Supabase client", {
-      requestId,
-      email: maskEmail(body.email),
-    });
-
-    const supabaseAdmin = createSupabaseAdminClient();
-    await sendOtp(supabaseAdmin, body.email, requestId);
-
-    console.info("[API send-signup-otp] Request completed", {
-      requestId,
-      email: maskEmail(body.email),
-    });
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("[API send-signup-otp] Request failed", {
-      requestId,
-      error: getErrorDetails(error),
-    });
-
-    if (error instanceof OtpServiceError) {
-      return res.status(error.statusCode).json({
-        error: error.message,
-        diagnosticCode: error.diagnosticCode,
+    if (!email) {
+      return sendJson(res, 400, {
+        error: "Email is required",
+        diagnosticCode: "email_missing",
         requestId,
       });
     }
 
-    return res.status(500).json({
-      error: "Failed to send verification code",
-      diagnosticCode:
-        error instanceof Error &&
-        error.message.includes("SUPABASE_SERVICE_ROLE_KEY")
-          ? "server_env_missing"
-          : "unexpected_server_error",
+    const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const emailUser = process.env.EMAIL_USER?.trim();
+    const emailPass = process.env.EMAIL_PASS?.trim();
+
+    if (!supabaseUrl || !supabaseKey) {
+      return sendJson(res, 500, {
+        error: "Supabase server environment variables are missing",
+        diagnosticCode: "supabase_env_missing",
+        requestId,
+      });
+    }
+
+    if (!emailUser || !emailPass) {
+      return sendJson(res, 500, {
+        error: "Email server environment variables are missing",
+        diagnosticCode: "email_env_missing",
+        requestId,
+      });
+    }
+
+    const [{ createClient }, nodemailerModule] = await Promise.all([
+      import("@supabase/supabase-js"),
+      import("nodemailer"),
+    ]);
+
+    const nodemailer = nodemailerModule.default || nodemailerModule;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+    const deleteResult = await supabaseAdmin
+      .from("verification_codes")
+      .delete()
+      .eq("email", email);
+
+    if (deleteResult.error) {
+      console.error("[send-signup-otp] DB delete failed", {
+        requestId,
+        email: maskEmail(email),
+        error: deleteResult.error,
+      });
+
+      return sendJson(res, 500, {
+        error: "Failed to reset verification code",
+        diagnosticCode: "db_delete_failed",
+        requestId,
+      });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    const insertResult = await supabaseAdmin
+      .from("verification_codes")
+      .insert([{ email, code, expires_at: expiresAt }]);
+
+    if (insertResult.error) {
+      console.error("[send-signup-otp] DB insert failed", {
+        requestId,
+        email: maskEmail(email),
+        error: insertResult.error,
+      });
+
+      return sendJson(res, 500, {
+        error: "Failed to store verification code",
+        diagnosticCode: "db_insert_failed",
+        requestId,
+      });
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"DevSchedule" <${emailUser}>`,
+        to: email,
+        subject: "Your DevSchedule verification code",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
+            <h1 style="font-size: 24px; margin: 0 0 16px;">Verify your email</h1>
+            <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px; color: #475569;">
+              Use this one-time code to continue with DevSchedule.
+            </p>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 28px; text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #020617; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">${code}</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin: 0;">
+              This code expires in 10 minutes. If you did not request it, you can safely ignore this email.
+            </p>
+          </div>
+        `,
+      });
+    } catch (error) {
+      console.error("[send-signup-otp] Email send failed", {
+        requestId,
+        email: maskEmail(email),
+        error: getErrorMessage(error),
+      });
+
+      return sendJson(res, 500, {
+        error: "Failed to send verification email",
+        diagnosticCode: "email_send_failed",
+        requestId,
+      });
+    }
+
+    return sendJson(res, 200, { success: true, requestId });
+  } catch (error) {
+    console.error("[send-signup-otp] Unexpected failure", {
       requestId,
+      error: getErrorMessage(error),
+    });
+
+    return sendJson(res, 500, {
+      error: "Unexpected server error",
+      diagnosticCode: "unexpected_server_error",
+      requestId,
+      details: getErrorMessage(error),
     });
   }
 }
