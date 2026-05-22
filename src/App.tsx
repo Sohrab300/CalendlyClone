@@ -20,8 +20,13 @@ import { LoginPage } from './pages/LoginPage';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Toaster } from 'sonner';
+import { logOAuthDebug } from './lib/authDebug';
 
 export default function App() {
+  React.useEffect(() => {
+    logOAuthDebug('App loaded');
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>
