@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { existsSync, readFileSync } from "node:fs";
 import { google } from "googleapis";
 import { createClient } from "@supabase/supabase-js";
-import { sendOtpEmail } from "./src/services/emailService";
+import { OtpServiceError, sendOtp, verifyOtp } from "./server/otpService";
 
 dotenv.config();
 
@@ -673,25 +673,13 @@ async function startServer() {
     if (!email) return res.status(400).json({ error: "Email is required" });
 
     try {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-      // Industry Standard: Store in Database (Supabase)
-      const { error: dbError } = await supabaseAdmin
-        .from("verification_codes")
-        .insert([{ email, code, expires_at: expires.toISOString() }]);
-
-      if (dbError) {
-        console.error("Database error saving verification code:", dbError);
-        // Fallback for this demo environment if table doesn't exist yet
-        // In a real production app, the table must exist.
-      }
-
-      await sendOtpEmail(email, code);
-
+      await sendOtp(supabaseAdmin, email);
       res.json({ success: true });
     } catch (error) {
       console.error("Error sending verification email:", error);
+      if (error instanceof OtpServiceError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
       res.status(500).json({
         error:
           error instanceof Error
@@ -708,33 +696,13 @@ async function startServer() {
       return res.status(400).json({ error: "Email and code are required" });
 
     try {
-      // Industry Standard: Verify from Database
-      const { data, error } = await supabaseAdmin
-        .from("verification_codes")
-        .select("*")
-        .eq("email", email)
-        .eq("code", code)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error || !data) {
-        return res.status(400).json({ error: "Invalid verification code" });
-      }
-
-      if (new Date() > new Date(data.expires_at)) {
-        return res.status(400).json({ error: "Verification code has expired" });
-      }
-
-      // Success - Delete used code
-      await supabaseAdmin
-        .from("verification_codes")
-        .delete()
-        .eq("email", email);
-
+      await verifyOtp(supabaseAdmin, email, code);
       res.json({ success: true });
     } catch (err) {
       console.error("Verification error:", err);
+      if (err instanceof OtpServiceError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
       res.status(500).json({ error: "Verification failed" });
     }
   });
@@ -745,23 +713,13 @@ async function startServer() {
     if (!email) return res.status(400).json({ error: "Email is required" });
 
     try {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-      // Store in Database
-      const { error: dbError } = await supabaseAdmin
-        .from("verification_codes")
-        .insert([{ email, code, expires_at: expires.toISOString() }]);
-
-      if (dbError) {
-        console.error("Database error saving verification code:", dbError);
-      }
-
-      await sendOtpEmail(email, code);
-
+      await sendOtp(supabaseAdmin, email);
       res.json({ success: true });
     } catch (error) {
       console.error("Error sending signup OTP:", error);
+      if (error instanceof OtpServiceError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
       res.status(500).json({
         error:
           error instanceof Error
@@ -777,32 +735,13 @@ async function startServer() {
       return res.status(400).json({ error: "Email and code are required" });
 
     try {
-      const { data, error } = await supabaseAdmin
-        .from("verification_codes")
-        .select("*")
-        .eq("email", email)
-        .eq("code", code)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error || !data) {
-        return res.status(400).json({ error: "Invalid verification code" });
-      }
-
-      if (new Date() > new Date(data.expires_at)) {
-        return res.status(400).json({ error: "Verification code has expired" });
-      }
-
-      // Success - Delete used code
-      await supabaseAdmin
-        .from("verification_codes")
-        .delete()
-        .eq("email", email);
-
+      await verifyOtp(supabaseAdmin, email, code);
       res.json({ success: true });
     } catch (err) {
       console.error("Verification error:", err);
+      if (err instanceof OtpServiceError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
       res.status(500).json({ error: "Verification failed" });
     }
   });
