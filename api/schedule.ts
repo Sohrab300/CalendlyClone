@@ -324,6 +324,10 @@ export default async function handler(req: any, res: any) {
     const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
     const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
     const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI?.trim();
+    const missingGoogleConfig = [
+      !googleClientId ? "GOOGLE_CLIENT_ID" : null,
+      !googleClientSecret ? "GOOGLE_CLIENT_SECRET" : null,
+    ].filter(Boolean);
 
     if (!supabaseUrl || !supabaseServiceKey) {
       return failScheduling(
@@ -333,11 +337,13 @@ export default async function handler(req: any, res: any) {
       );
     }
 
-    if (!googleClientId || !googleClientSecret || !googleRedirectUri) {
+    if (missingGoogleConfig.length > 0) {
       return failScheduling(
         "configuration",
         500,
-        new Error("Google integration configuration missing"),
+        new Error(
+          `Google integration configuration missing: ${missingGoogleConfig.join(", ")}`,
+        ),
       );
     }
 
@@ -387,7 +393,7 @@ export default async function handler(req: any, res: any) {
     const oauth2Client = new google.auth.OAuth2(
       googleClientId,
       googleClientSecret,
-      googleRedirectUri,
+      googleRedirectUri || undefined,
     );
 
     oauth2Client.setCredentials({
