@@ -37,6 +37,9 @@ import {
 
 type ViewState = "calendar" | "details" | "success" | "verification";
 
+const BOOKING_RETRY_MESSAGE =
+  "We couldn't book this meeting right now. Please try again after some time.";
+
 const parseCalendarDateValue = (value: string) => {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
@@ -499,8 +502,7 @@ export default function SchedulingPage() {
         });
       }
 
-      // Save to Supabase
-      await availabilityService.createBooking({
+      const createdBooking = await availabilityService.createBooking({
         event_slug: event.slug,
         host_id: hostProfile.id,
         start_time: dateTime.toISOString(),
@@ -515,15 +517,15 @@ export default function SchedulingPage() {
         custom_answers: data.customAnswers,
       });
 
-      // Also call the mock API for email simulation
       try {
+        const customAnswers = data.customAnswers || {};
         const whatsapp =
-          Object.values(data.customAnswers).find(
+          Object.values(customAnswers).find(
             (val: any) => typeof val === "string" && val.startsWith("+"),
           ) || mobileNumber;
         const automationType =
           (
-            Object.values(data.customAnswers).find(
+            Object.values(customAnswers).find(
               (val: any) =>
                 val &&
                 typeof val === "object" &&
@@ -563,7 +565,11 @@ export default function SchedulingPage() {
         const scheduleResult = await scheduleResponse.json().catch(() => null);
 
         if (!scheduleResponse.ok) {
-          console.warn("Meeting API failed:", scheduleResult);
+          console.warn("Meeting API failed", {
+            requestId: scheduleResult?.requestId,
+            status: scheduleResponse.status,
+          });
+          throw new Error(BOOKING_RETRY_MESSAGE);
         } else if (
           scheduleResult?.warning ||
           scheduleResult?.calendarStatus === "rejected" ||
@@ -571,16 +577,29 @@ export default function SchedulingPage() {
             (status: any) => status.status === "rejected",
           )
         ) {
-          console.warn("Meeting API completed with warnings:", scheduleResult);
+          console.warn("Meeting API completed with warnings", {
+            requestId: scheduleResult?.requestId,
+            calendarStatus: scheduleResult?.calendarStatus,
+            emailStatus: scheduleResult?.emailStatus,
+          });
+          throw new Error(BOOKING_RETRY_MESSAGE);
         }
       } catch (e) {
-        console.warn("Meeting API failed, check server configuration:", e);
+        await availabilityService.deleteBooking(createdBooking.id).catch(
+          (deleteError) => {
+            console.warn(
+              "Failed to roll back booking after meeting API failure:",
+              deleteError,
+            );
+          },
+        );
+        throw e;
       }
 
       setView("success");
     } catch (error) {
       console.error("Error scheduling:", error);
-      alert("Failed to schedule booking. Please try again.");
+      alert(BOOKING_RETRY_MESSAGE);
     } finally {
       setIsSubmitting(false);
     }
