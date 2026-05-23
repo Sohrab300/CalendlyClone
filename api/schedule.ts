@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+
 type HostProfile = {
   id: string;
   email: string | null;
@@ -96,9 +99,17 @@ const encodeBase64Url = (value: string) =>
 const chunkBase64 = (value: string) =>
   value.match(/.{1,76}/g)?.join("\r\n") || value;
 
+const logoContentId = "devschedule-logo";
+const logoPath = path.join(process.cwd(), "public", "favicon-f.png");
+
+const getLogoBase64 = () => {
+  if (!existsSync(logoPath)) return null;
+  return readFileSync(logoPath).toString("base64");
+};
+
 const emailLogoHtml = `
   <div style="text-align: center; padding: 24px 24px 8px;">
-    <div style="display: inline-flex; width: 56px; height: 56px; border-radius: 16px; align-items: center; justify-content: center; background: #006bff; color: #ffffff; font-size: 28px; font-weight: 800;">D</div>
+    <img src="cid:${logoContentId}" alt="DevSchedule" width="56" height="56" style="display: inline-block; width: 56px; height: 56px; object-fit: contain;" />
   </div>
 `;
 
@@ -210,6 +221,36 @@ const buildRawEmail = ({
   html: string;
 }) => {
   const encodedSubject = `=?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`;
+  const logoBase64 = getLogoBase64();
+
+  if (logoBase64) {
+    const boundary = `devschedule_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const message = [
+      `From: ${from}`,
+      `To: ${to}`,
+      `Subject: ${encodedSubject}`,
+      "MIME-Version: 1.0",
+      `Content-Type: multipart/related; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      chunkBase64(Buffer.from(html, "utf8").toString("base64")),
+      `--${boundary}`,
+      'Content-Type: image/png; name="favicon-f.png"',
+      "Content-Transfer-Encoding: base64",
+      `Content-ID: <${logoContentId}>`,
+      'Content-Disposition: inline; filename="favicon-f.png"',
+      "",
+      chunkBase64(logoBase64),
+      `--${boundary}--`,
+      "",
+    ].join("\r\n");
+
+    return encodeBase64Url(message);
+  }
+
   const message = [
     `From: ${from}`,
     `To: ${to}`,
@@ -495,30 +536,6 @@ export default async function handler(req: any, res: any) {
         },
       });
 
-    try {
-      await sendGmail({
-        toEmail: email,
-        subject: `Invitation: ${eventTitle} with ${hostDisplayName}`,
-        html: buildBookingConfirmationHtml({
-          eventTitle,
-          hostDisplayName,
-          inviteeName,
-          startTime,
-          endTime,
-          timezone,
-          googleMeetLink,
-        }),
-      });
-    } catch (error) {
-      const googleError = await handleGoogleOperationError("Invitee email", error);
-      return failScheduling("invitee_email", googleError.status || 502, error, {
-        hostId: hostProfile.id,
-        googleMeetLink,
-        errors,
-        googleError,
-      });
-    }
-
     if (hostNotificationsEnabled) {
       try {
         await sendGmail({
@@ -554,7 +571,7 @@ export default async function handler(req: any, res: any) {
       googleMeetLink,
       errors,
       emailStatus: [
-        { type: "Invitee", status: "fulfilled" },
+        { type: "Invitee", status: "calendar_invite" },
         {
           type: "Host",
           status: hostNotificationsEnabled ? "fulfilled" : "skipped",

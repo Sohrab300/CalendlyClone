@@ -899,29 +899,6 @@ async function startServer() {
         }
       }
 
-      if (!googleAuthRecoveryRequired) {
-        try {
-          await sendInviteeBookingEmail({
-            oauth2Client,
-            hostEmail,
-            hostDisplayName,
-            inviteeEmail: email,
-            eventTitle,
-            inviteeName,
-            startTime,
-            endTime,
-            timezone,
-            googleMeetLink,
-          });
-        } catch (inviteeGmailError) {
-          inviteeEmailStatus = "rejected";
-          await handleGoogleOperationError(
-            "Invitee email",
-            inviteeGmailError,
-          );
-        }
-      }
-
       if (hostNotificationsEnabled && !googleAuthRecoveryRequired) {
         try {
           await sendHostGmailEmail({
