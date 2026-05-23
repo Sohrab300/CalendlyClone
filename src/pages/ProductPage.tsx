@@ -72,15 +72,15 @@ export default function ProductPage() {
 
       <section className="border-b border-slate-200/70 bg-[radial-gradient(circle_at_top,#eaf2ff_0%,#f7f9ff_52%,#ffffff_100%)] px-4 py-20 md:px-5">
         <div className="mx-auto max-w-6xl text-center">
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-blue-700">
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wide text-blue-700">
             <Code2 className="h-3.5 w-3.5" />
             V1.0 released
           </div>
 
-          <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
+          <h1 className="mx-auto max-w-4xl text-2xl sm:text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
             A Full-Stack Scheduling App, Built from Scratch.
           </h1>
-          <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+          <p className="mx-auto mt-7 max-w-2xl text-sm sm:text-base leading-7 text-slate-600 md:text-lg">
             Every feature you see was designed, built, and deployed by one
             developer as a learning project inspired by Calendly.
           </p>
@@ -120,7 +120,7 @@ export default function ProductPage() {
             <p className="text-xs font-extrabold uppercase tracking-wide text-teal-700">
               // Architecture
             </p>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-normal text-slate-950">
+            <h2 className="mt-2 text-xl sm:text-3xl font-extrabold tracking-normal text-slate-950">
               Built With Modern Tools.
             </h2>
           </div>
@@ -139,7 +139,7 @@ export default function ProductPage() {
                     >
                       <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="text-2xl font-extrabold tracking-normal text-slate-950">
+                    <h3 className="text-lg sm:text-2xl font-extrabold tracking-normal text-slate-950">
                       {group.title}
                     </h3>
                   </div>
@@ -147,7 +147,7 @@ export default function ProductPage() {
                     {group.tags.map((tag, index) => (
                       <span
                         key={tag}
-                        className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                        className={`rounded-full px-3 py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wide ${
                           index === 0
                             ? "bg-blue-50 text-blue-700"
                             : "bg-slate-100 text-slate-600"

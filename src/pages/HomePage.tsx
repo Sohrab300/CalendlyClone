@@ -64,14 +64,14 @@ export default function HomePage() {
 
       <section className="border-b border-slate-100 bg-[radial-gradient(circle_at_top,#eef4ff_0%,#f8faff_38%,#ffffff_72%)]">
         <div className="mx-auto flex min-h-[420px] max-w-4xl flex-col items-center justify-center px-5 py-20 text-center md:px-8">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-600 shadow-sm">
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-3 py-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wide text-slate-600 shadow-sm">
             <Code2 className="h-3.5 w-3.5 text-blue-600" />
             Educational project - not affiliated with Calendly
           </div>
-          <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
+          <h1 className="max-w-4xl text-2xl sm:text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
             Scheduling. Reimagined by a Developer.
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+          <p className="mt-6 max-w-2xl text-sm sm:text-base leading-7 text-slate-600 md:text-lg">
             A Calendly-inspired clone built to master full-stack development and
             high-fidelity UI design.
           </p>
@@ -99,7 +99,7 @@ export default function HomePage() {
       <section className="px-5 py-20 md:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="text-center">
-            <h2 className="text-3xl font-extrabold tracking-normal text-slate-950">
+            <h2 className="text-xl sm:text-3xl font-extrabold tracking-normal text-slate-950">
               Behind the Code
             </h2>
             <p className="mt-4 text-sm leading-6 text-slate-600 md:text-base">

@@ -62,14 +62,14 @@ export default function CaseStudiesPage() {
       <section className="px-4 py-20 md:px-5">
         <div className="mx-auto max-w-5xl">
           <div className="text-center">
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-blue-700">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1 text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wide text-blue-700">
               <CalendarCog className="h-3.5 w-3.5" />
               Case Study
             </div>
-            <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
+            <h1 className="mx-auto max-w-4xl text-2xl sm:text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
               How I Built a Calendly Clone as a Full-Stack Developer.
             </h1>
-            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+            <p className="mx-auto mt-7 max-w-2xl text-sm sm:text-base leading-7 text-slate-600 md:text-lg">
               A personal case study on going from isolated features to a
               complete, deployable product.
             </p>
@@ -81,7 +81,7 @@ export default function CaseStudiesPage() {
           >
             <div className="absolute bottom-[140px] left-5 top-[120px] w-px bg-slate-200 md:left-1/2 md:-translate-x-1/2" />
             <motion.div
-              className="absolute bottom-[20px] left-5 top-[100px] w-0.5 origin-top bg-blue-600 md:left-1/2 md:-translate-x-1/2"
+              className="absolute bottom-[140px] md:bottom-[20px] left-5 top-[100px] w-0.5 origin-top bg-blue-600 md:left-1/2 md:-translate-x-1/2"
               style={{ scaleY }}
             />
 
@@ -144,10 +144,10 @@ function TimelineCard({
           {item.label}
         </p>
       )}
-      <h2 className="text-2xl font-extrabold tracking-normal text-slate-950">
+      <h2 className="text-lg sm:text-2xl font-extrabold tracking-normal text-slate-950">
         {item.title}
       </h2>
-      <p className="mt-4 text-base leading-6 text-slate-600">
+      <p className="mt-4 text-sm sm:text-base leading-6 text-slate-600">
         {item.description}
       </p>
     </article>

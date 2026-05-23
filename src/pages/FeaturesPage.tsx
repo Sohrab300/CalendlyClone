@@ -82,17 +82,17 @@ export default function FeaturesPage() {
       <section className="px-4 py-20 md:px-5">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-1 text-[11px] font-extrabold uppercase tracking-wide text-teal-700">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-1 text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wide text-teal-700">
               <Code2 className="h-3.5 w-3.5" />
               Architecture
             </div>
-            <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
+            <h1 className="mx-auto max-w-4xl text-2xl smtext-4xl font-extrabold leading-tight tracking-normal text-slate-950 md:text-5xl">
               Everything You&apos;d Expect.
               <span className="block text-blue-700">
                 Built by One Developer.
               </span>
             </h1>
-            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+            <p className="mx-auto mt-7 max-w-2xl text-sm sm:text-base leading-7 text-slate-600 md:text-lg">
               A real-world scheduling product with a complete booking flow,
               admin dashboard, calendar integration, and more.
             </p>
@@ -111,10 +111,10 @@ export default function FeaturesPage() {
                   >
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h2 className="text-2xl font-extrabold leading-tight tracking-normal text-slate-950">
+                  <h2 className="text-xl sm:text-2xl font-extrabold leading-tight tracking-normal text-slate-950">
                     {feature.title}
                   </h2>
-                  <p className="mt-4 text-base leading-6 text-slate-600">
+                  <p className="mt-4 text-sm sm:text-base leading-6 text-slate-600">
                     {feature.description}
                   </p>
                 </article>
@@ -124,7 +124,7 @@ export default function FeaturesPage() {
 
           <div className="mt-12 rounded-lg border border-blue-200 bg-blue-50 px-6 py-10 text-center text-slate-950">
             <AlertTriangle className="mx-auto h-9 w-9 text-blue-700" />
-            <p className="mx-auto mt-5 max-w-3xl text-2xl font-extrabold leading-snug tracking-normal md:text-3xl">
+            <p className="mx-auto mt-5 max-w-3xl text-lg sm:text-2xl font-extrabold leading-snug tracking-normal md:text-3xl">
               &quot;This is not an API wrapper. Every feature was hand-built as
               a learning exercise.&quot;
             </p>
