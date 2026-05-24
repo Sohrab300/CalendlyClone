@@ -11,13 +11,14 @@ import {
   CheckCircle2, 
   User, 
   AtSign,
-  ChevronLeft
+  ChevronLeft,
+  Lock
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BrandLogo } from "../components/BrandLogo";
 import { buildOAuthRedirectUrl } from "../lib/authDebug";
 
-type SignupStep = 1 | 2 | 3 | 4;
+type SignupStep = 1 | 2 | 3 | 4 | 5;
 
 const readApiResponse = async (response: Response) => {
   const text = await response.text();
@@ -49,6 +50,8 @@ export default function SignupPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const authCallbackHandledRef = useRef(false);
@@ -71,7 +74,17 @@ export default function SignupPage() {
           return;
         }
 
-        navigate("/admin");
+        const signupFlow = sessionStorage.getItem("devschedule_signup_flow");
+        sessionStorage.removeItem("devschedule_signup_flow");
+
+        if (signupFlow === "manual_google_connect") {
+          navigate("/admin");
+          return;
+        }
+
+        setPassword("");
+        setConfirmPassword("");
+        setStep(5);
       }
     };
 
@@ -80,7 +93,11 @@ export default function SignupPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    const redirectTo = buildOAuthRedirectUrl("/auth/callback");
+    sessionStorage.setItem(
+      "devschedule_signup_flow",
+      step === 4 ? "manual_google_connect" : "google_signup",
+    );
+    const redirectTo = buildOAuthRedirectUrl("/signup");
     const scopes = "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.send";
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -95,6 +112,7 @@ export default function SignupPage() {
       },
     });
     if (error) {
+      sessionStorage.removeItem("devschedule_signup_flow");
       toast.error(error.message);
       setLoading(false);
     }
@@ -171,7 +189,18 @@ export default function SignupPage() {
 
   const createProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !username) return;
+    if (!fullName || !username || !password || !confirmPassword) return;
+
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -193,15 +222,9 @@ export default function SignupPage() {
         return;
       }
 
-      // Create user in Supabase Auth (using a dummy password for now since we verified email)
-      // Actually, Supabase doesn't allow creating user without password easily via client SDK if email is already verified by us.
-      // But we can use signInWithOtp (magic link) or just signUp with a random password.
-      // Alternatively, we can use a dedicated signup route on backend.
-      // For this task, I'll use signUp with a random password.
-      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
-        password: Math.random().toString(36).slice(-12), // Random password
+        password,
         options: {
           data: {
             full_name: fullName,
@@ -254,6 +277,38 @@ export default function SignupPage() {
     }
   };
 
+  const setOAuthPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password || !confirmPassword) return;
+
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Password saved successfully");
+      navigate("/admin");
+    } catch {
+      toast.error("Failed to save password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const skipGoogle = () => {
     navigate("/admin");
   };
@@ -287,7 +342,7 @@ export default function SignupPage() {
             {step === 4 ? "Final Step" : "Create your account"}
           </h1>
           <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-            Step {step} of 4
+            Step {step > 4 ? 4 : step} of 4
           </span>
         </div>
 
@@ -469,9 +524,51 @@ export default function SignupPage() {
                     )}
                   </div>
 
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="password"
+                        placeholder="At least 8 characters"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        className="w-full pl-12 pr-4 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#006bff] focus:border-[#006bff] outline-none transition-all placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="password"
+                        placeholder="Re-enter your password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        className="w-full pl-12 pr-4 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#006bff] focus:border-[#006bff] outline-none transition-all placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={loading || !fullName || !username}
+                    disabled={
+                      loading ||
+                      !fullName ||
+                      !username ||
+                      !password ||
+                      !confirmPassword
+                    }
                     className="w-full py-4 bg-[#006bff] text-white rounded-xl font-bold text-lg hover:bg-[#0052cc] transition-all flex items-center justify-center gap-2 disabled:opacity-70 shadow-lg shadow-blue-100"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
@@ -533,6 +630,73 @@ export default function SignupPage() {
                     Skip for now
                   </button>
                 </div>
+              </motion.div>
+            )}
+
+            {step === 5 && (
+              <motion.div
+                key="step5"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h2 className="text-xl font-bold text-slate-900 mb-3">
+                  Create your password
+                </h2>
+                <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+                  Use this password when you log in with your email.
+                </p>
+
+                <form onSubmit={setOAuthPassword} className="space-y-6">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="password"
+                        placeholder="At least 8 characters"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        className="w-full pl-12 pr-4 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#006bff] focus:border-[#006bff] outline-none transition-all placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <input
+                        type="password"
+                        placeholder="Re-enter your password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        className="w-full pl-12 pr-4 py-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#006bff] focus:border-[#006bff] outline-none transition-all placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || !password || !confirmPassword}
+                    className="w-full py-4 bg-[#006bff] text-white rounded-xl font-bold text-lg hover:bg-[#0052cc] transition-all flex items-center justify-center gap-2 disabled:opacity-70 shadow-lg shadow-blue-100"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      "Save Password"
+                    )}
+                  </button>
+                </form>
               </motion.div>
             )}
           </AnimatePresence>
