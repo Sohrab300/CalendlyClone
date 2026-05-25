@@ -26,7 +26,7 @@ It removes the back-and-forth of scheduling by handling booking forms, optional 
 *   **🎛 Booking Rules**: Buffers before/after, meeting limits, time increments, minimum notice, date range limits, and timezone lock/detect.
 *   **📋 Custom Invitee Forms**: Name/email or first/last/email, guests, phone fields, custom questions (text, radio, checkbox, dropdown).
 *   **🗂 Meetings & Contacts**: Upcoming/past filters, CSV export, rich-text host notes, searchable contact table with column controls.
-*   **🔒 Auth & Security**: Email/password login, Google OAuth, OTP-based signup, optional per-event email verification for invitees.
+*   **🔒 Auth & Security**: Email/password login, Google OAuth, OTP-based signup, 5-minute password reset links, optional per-event email verification for invitees.
 *   **📨 Google Integration**: Creates Calendar events, generates Meet links, sends Calendar invites to invitees, and emails host on booking.
 *   **🎨 Branding & Settings**: Avatar upload, brand logo, welcome message, username/slug, timezone/date/time preferences, notification controls.
 
@@ -132,6 +132,8 @@ $ npm run clean
 *   **POST** `/api/auth/ensure-profile`: Validates Bearer token, creates/updates profile, stores Google tokens, seeds default schedule and event type.
 *   **POST** `/api/auth/send-signup-otp`: Sends a 6-digit OTP email and stores the code in Supabase for manual signup flow.
 *   **POST** `/api/auth/verify-signup-otp`: Verifies the OTP and deletes the used code from the database.
+*   **POST** `/api/auth/request-password-reset`: Checks whether a profile exists for the submitted email, creates a 5-minute reset token, and emails the reset link.
+*   **POST** `/api/auth/reset-password`: Validates the reset token and updates the Supabase Auth password.
 *   **POST** `/api/verification/send`: Sends invitee email verification code before booking.
 *   **POST** `/api/verification/verify`: Verifies the invitee email code and permits booking to proceed.
 
@@ -153,6 +155,7 @@ The app expects the following Supabase tables and storage buckets:
 
 *   **🔄 Booking Rollback**: Supabase booking is created first, then Google Calendar is called. If scheduling fails, the booking is deleted and the user is notified generically while diagnostics are emailed to `EMAIL_USER`.
 *   **🏗 Profile Bootstrap**: `ensure-profile` is the single entry point for new users: creates their profile, default schedule, weekly hours, and a "30 Minute Meeting" event type.
+*   **🔐 Password Reset**: Password reset uses the existing `verification_codes` table with `pwd_`-prefixed tokens that expire after 5 minutes. The reset email and reset-confirmation screen both mention the 5-minute validity window.
 *   **📤 Invitee Notifications**: Invitees receive Google Calendar invites via `sendUpdates: "all"` — not a custom app email. Hosts get a branded Gmail notification.
 *   **🌐 Vercel Routing**: `vercel.json` rewrites all paths to `/index.html` for SPA routing. Serverless API functions under `/api` are still resolved independently.
 
@@ -160,7 +163,7 @@ The app expects the following Supabase tables and storage buckets:
 
 ## 📜 License
 
-Licensed under the **Apache License, Version 2.0**. See the `LICENSE` file for details.
+`src/App.tsx` contains an `Apache-2.0` SPDX header, but this repository currently does not include a top-level `LICENSE` file.
 
 ---
 
