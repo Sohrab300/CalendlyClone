@@ -8,7 +8,6 @@
 ![Google Calendar](https://img.shields.io/badge/Google_Calendar-4285F4?style=flat-square&logo=google-calendar&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
 ![Vite 6](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)
-![WIP](https://img.shields.io/badge/Status-WIP-f59e0b?style=flat-square)
 
 ---
 
@@ -59,10 +58,10 @@ It removes the back-and-forth of scheduling by handling booking forms, optional 
 | `src/services/` | Supabase data services for availability, bookings, and profile |
 | `src/context/` | Auth context wrapping Supabase session state |
 | `src/lib/` | Supabase client, utilities, OAuth redirect helpers |
-| `api/` | Vercel serverless functions: schedule, auth, OTP, profile |
+| `api/` | Vercel serverless functions: schedule, auth, OTP, profile, verification |
 | `server/` | Shared local server helpers: OTP, email, Supabase admin client |
 | `server.ts` | Local Express server, API routes, Vite middleware, Google logic |
-| `supabase/migrations/` | SQL migration for verification_codes table |
+| `supabase/` | Supabase project configuration and database assets |
 
 ---
 
@@ -96,9 +95,6 @@ $ npm run lint
 # remove dist/
 $ npm run clean
 ```
-
-> [!NOTE]
-> No automated test suite is configured. Type-checking via `npm run lint` is the primary verification step.
 
 ---
 
@@ -136,14 +132,8 @@ $ npm run clean
 *   **POST** `/api/auth/ensure-profile`: Validates Bearer token, creates/updates profile, stores Google tokens, seeds default schedule and event type.
 *   **POST** `/api/auth/send-signup-otp`: Sends a 6-digit OTP email and stores the code in Supabase for manual signup flow.
 *   **POST** `/api/auth/verify-signup-otp`: Verifies the OTP and deletes the used code from the database.
-
-### Local Express-Only Routes
-
-*   **POST** `/api/verification/send`: Sends invitee email verification code before booking (no Vercel parity yet).
+*   **POST** `/api/verification/send`: Sends invitee email verification code before booking.
 *   **POST** `/api/verification/verify`: Verifies the invitee email code and permits booking to proceed.
-
-> [!IMPORTANT]
-> **Heads up:** `/api/verification/send` and `/api/verification/verify` exist only in the local Express server and do not yet have matching Vercel serverless files. Email verification for invitees will need Vercel API parity before production deployment.
 
 ---
 
@@ -156,9 +146,6 @@ The app expects the following Supabase tables and storage buckets:
 
 ### Storage Buckets
 `avatars`, `brand-logos`
-
-> [!NOTE]
-> Only `verification_codes` has a migration file in `supabase/migrations/`. The remaining tables must be created manually in your Supabase project dashboard.
 
 ---
 
@@ -173,7 +160,7 @@ The app expects the following Supabase tables and storage buckets:
 
 ## 📜 License
 
-Source files contain an `Apache-2.0` SPDX identifier (see `src/App.tsx`). No top-level `LICENSE` file is present — adding one is recommended before open-sourcing or distributing this project.
+Licensed under the **Apache License, Version 2.0**. See the `LICENSE` file for details.
 
 ---
 
