@@ -1,6 +1,7 @@
 import React from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
+import { captureAppError } from '../../lib/sentry';
 import { availabilityService } from '../../services/availabilityService';
 import { buildOAuthRedirectUrl } from '../../lib/authDebug';
 
@@ -45,6 +46,10 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       setEvents(await availabilityService.getEventTypes(user.id));
     } catch (err) {
       console.error('Error loading events:', err);
+      captureAppError(err, {
+        route: '/admin',
+        stage: 'settings_load_events',
+      });
     }
   };
 
@@ -72,6 +77,10 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       });
     } catch (err) {
       console.error('Error loading profile:', err);
+      captureAppError(err, {
+        route: '/admin',
+        stage: 'settings_load_profile',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -92,6 +101,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       toast.success('Profile picture updated successfully');
     } catch (error: any) {
       console.error('Error uploading avatar:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'upload_avatar',
+        userId: profile.id,
+      });
       toast.error(error.message || 'Failed to upload profile picture');
     } finally {
       setIsUploading(false);
@@ -107,6 +121,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       toast.success('Profile picture removed');
     } catch (error) {
       console.error('Error removing avatar:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'remove_avatar',
+        userId: profile.id,
+      });
       toast.error('Failed to remove profile picture');
     }
   };
@@ -124,6 +143,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       toast.success('Brand logo updated successfully');
     } catch (error: any) {
       console.error('Error uploading brand logo:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'upload_brand_logo',
+        userId: profile.id,
+      });
       toast.error(error.message || 'Failed to upload brand logo');
     } finally {
       setIsUploadingBrand(false);
@@ -139,6 +163,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       toast.success('Brand logo removed');
     } catch (error) {
       console.error('Error removing brand logo:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'remove_brand_logo',
+        userId: profile.id,
+      });
       toast.error('Failed to remove brand logo');
     }
   };
@@ -154,6 +183,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       toast.success('Profile saved successfully');
     } catch (error) {
       console.error('Error saving profile:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'save_profile',
+        userId: profile?.id,
+      });
       toast.error('Failed to update profile. Please ensure all columns exist in Supabase.');
     }
   };
@@ -178,6 +212,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       onProfileUpdate?.({ ...profile, host_notifications_enabled: enabled });
     } catch (err) {
       console.error('Error updating notifications:', err);
+      captureAppError(err, {
+        route: '/admin',
+        stage: 'toggle_host_notifications',
+        userId: profile.id,
+      });
       toast.error('Failed to sync settings with database.');
       setProfile(previousProfile);
     }
@@ -211,6 +250,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
 
     if (error) {
       sessionStorage.removeItem('devschedule_auth_redirect_after_callback');
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'connect_google',
+        userId: user.id,
+      });
       toast.error(error.message);
     }
   };
@@ -232,6 +276,11 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
       setSelectedEventIds([]);
     } catch (err) {
       console.error('Error updating verification:', err);
+      captureAppError(err, {
+        route: '/admin',
+        stage: 'toggle_bulk_verification',
+        selectedCount: selectedEventIds.length,
+      });
       toast.error('Failed to update verification');
     }
   };

@@ -107,6 +107,7 @@ $ npm run clean
 | `VITE_SUPABASE_URL` | Supabase project URL | Yes |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous public key | Yes |
 | `VITE_PUBLIC_APP_URL` | Public app origin for OAuth redirect URLs | No |
+| `VITE_SENTRY_DSN` | Sentry browser project DSN for frontend error reporting | No |
 | `GEMINI_API_KEY` | Google Gemini key (reserved for future use) | No |
 
 ### Server / API
@@ -119,6 +120,10 @@ $ npm run clean
 | `GOOGLE_CLIENT_ID` | OAuth client ID for Google Calendar / Gmail API | Yes |
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret for Google Calendar / Gmail API | Yes |
 | `GOOGLE_REDIRECT_URI` | OAuth redirect URI (used by local server.ts) | No |
+| `SENTRY_DSN` | Sentry server project DSN for API error reporting | No |
+| `SENTRY_AUTH_TOKEN` | Sentry auth token used by Vite to upload production source maps | No |
+| `SENTRY_ORG` | Sentry organization slug used for source-map uploads | No |
+| `SENTRY_PROJECT` | Sentry project slug used for source-map uploads | No |
 | `PORT` | Local Express port (defaults to 3000) | No |
 | `NODE_ENV` | Enables Vite middleware in dev, serves dist in production | No |
 

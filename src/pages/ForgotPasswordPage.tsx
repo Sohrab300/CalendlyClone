@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { BrandLogo } from "../components/BrandLogo";
+import { captureAppError } from "../lib/sentry";
 
 const readApiResponse = async (response: Response) => {
   const text = await response.text();
@@ -34,12 +35,23 @@ export default function ForgotPasswordPage() {
       const data = await readApiResponse(response);
 
       if (!response.ok) {
+        captureAppError(new Error(data.error || "Failed to send password reset link"), {
+          route: "/forgot-password",
+          stage: "request_password_reset",
+          status: response.status,
+          email,
+        });
         toast.error(data.error || "Failed to send password reset link");
         return;
       }
 
       setIsSent(true);
-    } catch {
+    } catch (error) {
+      captureAppError(error, {
+        route: "/forgot-password",
+        stage: "request_password_reset",
+        email,
+      });
       toast.error("Failed to send password reset link");
     } finally {
       setLoading(false);

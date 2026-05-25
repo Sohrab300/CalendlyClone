@@ -22,36 +22,41 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Toaster } from 'sonner';
+import { Sentry } from './lib/sentry';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Toaster position="top-center" richColors />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/product" element={<ProductPage />} />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/case-studies" element={<CaseStudiesPage />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/terms" element={<TermsOfService />} />
-          <Route path="/admin/login" element={<LoginPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route 
-            path="/admin/*" 
-            element={
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/:userSlug" element={<LandingPage />} />
-          <Route path="/:userSlug/:eventSlug" element={<SchedulingPage />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+    <Sentry.ErrorBoundary
+      fallback={<div role="alert">Something went wrong. Please refresh the page.</div>}
+    >
+      <AuthProvider>
+        <BrowserRouter>
+          <Toaster position="top-center" richColors />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/product" element={<ProductPage />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/case-studies" element={<CaseStudiesPage />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/admin/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/:userSlug" element={<LandingPage />} />
+            <Route path="/:userSlug/:eventSlug" element={<SchedulingPage />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </Sentry.ErrorBoundary>
   );
 }

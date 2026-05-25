@@ -2,6 +2,7 @@ import React from 'react';
 import { toast } from 'sonner';
 import { MOCK_EVENTS } from '../../constants';
 import { supabase } from '../../lib/supabase';
+import { captureAppError } from '../../lib/sentry';
 import { availabilityService, EventType } from '../../services/availabilityService';
 import { ensureProfileForSession } from '../../services/profileService';
 import { AdminProfile, EventFormData, ScheduleOption, SettingsTab } from '../types';
@@ -80,6 +81,10 @@ export function useAdminDashboard() {
       setSchedules(schedulesData || []);
     } catch (error) {
       console.error('Error loading data:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'admin_dashboard_load',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -98,6 +103,11 @@ export function useAdminDashboard() {
       setSelectedIds(new Set());
     } catch (error) {
       console.error('Error deleting events:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'delete_event_types',
+        selectedCount: selectedIds.size,
+      });
       alert('Failed to delete events');
     }
   };
@@ -222,6 +232,11 @@ export function useAdminDashboard() {
       resetDraftEvent();
     } catch (error) {
       console.error('Error saving event:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: editingEvent ? 'update_event_type' : 'create_event_type',
+        eventId: editingEvent?.id,
+      });
       toast.error('Failed to save event type');
     }
   };

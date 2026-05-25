@@ -4,6 +4,7 @@ import { ChevronRight, Loader2 } from "lucide-react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { cn } from "../lib/utils";
 import CookieSettingsPanel from "../components/CookieSettingsPanel";
+import { captureAppError } from "../lib/sentry";
 import {
   availabilityService,
   EventType,
@@ -37,6 +38,11 @@ export default function LandingPage() {
         setProfile(profileData);
       } catch (err) {
         console.error("Error loading data:", err);
+        captureAppError(err, {
+          route: "/:userSlug",
+          stage: "landing_page_load",
+          hostUsername: userSlug,
+        });
         setError("Failed to load profile");
       } finally {
         setIsLoading(false);

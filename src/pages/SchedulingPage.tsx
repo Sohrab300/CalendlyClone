@@ -26,6 +26,7 @@ import { VerificationStep } from "../components/VerificationStep";
 import { TimeZoneSelector } from "../components/TimeZoneSelector";
 import CookieSettingsPanel from "../components/CookieSettingsPanel";
 import { MOCK_EVENTS } from "../constants";
+import { captureAppError } from "../lib/sentry";
 import {
   availabilityService,
   DayAvailability,
@@ -120,22 +121,14 @@ export default function SchedulingPage() {
       setAllBookings([]);
 
       setIsLoading(true);
-      console.log("🔄 SchedulingPage: Loading data for", {
-        userSlug,
-        eventSlug,
-      });
 
       try {
         // Fetch host profile first
         const profile = userSlug
-          ? await availabilityService.getProfile(userSlug).catch((err) => {
-              console.error("Error fetching profile:", err);
-              return null;
-            })
+          ? await availabilityService.getProfile(userSlug).catch(() => null)
           : null;
 
         if (!profile) {
-          console.warn("❌ Host profile not found:", userSlug);
           setIsLoading(false);
           return;
         }
@@ -143,15 +136,11 @@ export default function SchedulingPage() {
         // Fetch only this host's event types
         const events = await availabilityService
           .getEventTypes(profile.id)
-          .catch((err) => {
-            console.error("Error fetching host event types:", err);
-            return [];
-          });
+          .catch(() => []);
 
         const foundEvent = events.find((e) => e.slug === eventSlug);
 
         if (!foundEvent) {
-          console.warn("❌ Event not found:", eventSlug);
           setIsLoading(false);
           return;
         }
@@ -160,10 +149,7 @@ export default function SchedulingPage() {
         setHostProfile(profile);
         const hostBookings = await availabilityService
           .getAllBookings(profile.id)
-          .catch((err) => {
-            console.error("Error fetching host bookings:", err);
-            return [];
-          });
+          .catch(() => []);
         setAllBookings(hostBookings);
 
         // Handle timezone display logic
@@ -212,16 +198,16 @@ export default function SchedulingPage() {
               setWeeklyHours(weekly);
               setOverrides(dateOverrides);
             } else {
-              console.warn("No schedule found for host:", profile.id);
               setWeeklyHours([]);
               setOverrides([]);
             }
-          } catch (scheduleErr) {
-            console.error("Error loading schedule:", scheduleErr);
+          } catch {
+            setWeeklyHours([]);
+            setOverrides([]);
           }
         }
-      } catch (error) {
-        console.error("CRITICAL: Error loading data:", error);
+      } catch {
+        setEvent(null);
       } finally {
         setIsLoading(false);
       }
@@ -241,8 +227,8 @@ export default function SchedulingPage() {
             hostProfile.id,
           );
           setBookings(dayBookings);
-        } catch (error) {
-          console.error("Error loading bookings:", error);
+        } catch {
+          setBookings([]);
         }
       };
       loadBookings();
@@ -397,7 +383,14 @@ export default function SchedulingPage() {
         setPendingData(data);
         setView("verification");
       } catch (err: any) {
-        console.error("Verification error:", err);
+        captureAppError(err, {
+          route: "/:userSlug/:eventSlug",
+          stage: "invitee_verification_send",
+          hostUsername: userSlug,
+          eventSlug,
+          eventTitle: event?.title,
+          inviteeEmail: data.email,
+        });
         alert(
           err.message || "Failed to send verification code. Please try again.",
         );
@@ -428,7 +421,14 @@ export default function SchedulingPage() {
 
       await processFinalBooking(pendingData);
     } catch (err: any) {
-      console.error("Verification failed:", err);
+      captureAppError(err, {
+        route: "/:userSlug/:eventSlug",
+        stage: "invitee_verification_verify",
+        hostUsername: userSlug,
+        eventSlug,
+        eventTitle: event?.title,
+        inviteeEmail: pendingData.email,
+      });
       alert(err.message || "Verification failed. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -448,7 +448,17 @@ export default function SchedulingPage() {
 
     if (!response.ok) {
       const err = await response.json().catch(() => null);
-      throw new Error(err?.error || "Failed to resend verification code");
+      const error = new Error(err?.error || "Failed to resend verification code");
+      captureAppError(error, {
+        route: "/:userSlug/:eventSlug",
+        stage: "invitee_verification_resend",
+        status: response.status,
+        hostUsername: userSlug,
+        eventSlug,
+        eventTitle: event.title,
+        inviteeEmail: pendingData.email,
+      });
+      throw error;
     }
   };
 
@@ -457,7 +467,6 @@ export default function SchedulingPage() {
     const dateTime = getSelectedDateTime();
 
     if (!dateTime || !event) {
-      console.error("Missing dateTime or event:", { dateTime, event });
       alert("Unable to determine meeting time. Please re-select your slot.");
       setIsSubmitting(false);
       return;
@@ -565,10 +574,6 @@ export default function SchedulingPage() {
         const scheduleResult = await scheduleResponse.json().catch(() => null);
 
         if (!scheduleResponse.ok) {
-          console.warn("Meeting API failed", {
-            requestId: scheduleResult?.requestId,
-            status: scheduleResponse.status,
-          });
           throw new Error(BOOKING_RETRY_MESSAGE);
         } else if (
           scheduleResult?.warning ||
@@ -577,28 +582,35 @@ export default function SchedulingPage() {
             (status: any) => status.status === "rejected",
           )
         ) {
-          console.warn("Meeting API completed with warnings", {
-            requestId: scheduleResult?.requestId,
-            calendarStatus: scheduleResult?.calendarStatus,
-            emailStatus: scheduleResult?.emailStatus,
-          });
           throw new Error(BOOKING_RETRY_MESSAGE);
         }
       } catch (e) {
-        await availabilityService.deleteBooking(createdBooking.id).catch(
-          (deleteError) => {
-            console.warn(
-              "Failed to roll back booking after meeting API failure:",
-              deleteError,
-            );
-          },
-        );
+        captureAppError(e, {
+          route: "/:userSlug/:eventSlug",
+          stage: "booking_schedule_api",
+          hostUsername: userSlug,
+          eventSlug: event.slug,
+          eventTitle: event.title,
+          inviteeEmail: data.email,
+          rawStartTime: dateTime.toISOString(),
+          rawEndTime: endTime.toISOString(),
+        });
+        await availabilityService
+          .deleteBooking(createdBooking.id)
+          .catch(() => undefined);
         throw e;
       }
 
       setView("success");
     } catch (error) {
-      console.error("Error scheduling:", error);
+      captureAppError(error, {
+        route: "/:userSlug/:eventSlug",
+        stage: "booking_submit",
+        hostUsername: userSlug,
+        eventSlug: event?.slug,
+        eventTitle: event?.title,
+        inviteeEmail: data.email,
+      });
       alert(BOOKING_RETRY_MESSAGE);
     } finally {
       setIsSubmitting(false);

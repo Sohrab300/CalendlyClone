@@ -1,3 +1,5 @@
+import { captureServerError } from "../../server/sentry";
+
 const normalizeUsernameBase = (value?: string | null) => {
   const normalized = (value || "user").toLowerCase().replace(/[^a-z0-9]/g, "");
   return normalized || "user";
@@ -264,6 +266,10 @@ export default async function handler(req: any, res: any) {
   } catch (error) {
     console.error("[ensure-profile] Failed", {
       error: getErrorMessage(error),
+    });
+    await captureServerError(error, {
+      route: "/api/auth/ensure-profile",
+      stage: "unhandled",
     });
 
     return sendJson(res, 500, { error: "Failed to ensure profile" });

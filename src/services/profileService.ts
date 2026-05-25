@@ -1,4 +1,5 @@
 import type { Session, User } from "@supabase/supabase-js";
+import { captureAppError } from "../lib/sentry";
 
 export const ensureProfileForSession = async (
   session: Session,
@@ -19,7 +20,14 @@ export const ensureProfileForSession = async (
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.error || "Failed to ensure profile");
+    const error = new Error(data?.error || "Failed to ensure profile");
+    captureAppError(error, {
+      route: "/api/auth/ensure-profile",
+      stage: "ensure_profile",
+      status: response.status,
+      userId: session.user.id,
+    });
+    throw error;
   }
 
   return data.profile;

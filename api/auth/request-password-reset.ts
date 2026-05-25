@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
+import { captureServerError } from "../../server/sentry";
 
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
@@ -47,6 +48,11 @@ export default async function handler(req: any, res: any) {
     const emailPass = process.env.EMAIL_PASS?.trim();
 
     if (!supabaseUrl || !supabaseServiceKey || !emailUser || !emailPass) {
+      await captureServerError(new Error("Password reset configuration missing"), {
+        route: "/api/auth/request-password-reset",
+        stage: "configuration",
+        email,
+      });
       return sendJson(res, 500, { error: "Password reset is not configured" });
     }
 
@@ -59,6 +65,11 @@ export default async function handler(req: any, res: any) {
       .maybeSingle();
 
     if (profileError) {
+      await captureServerError(profileError, {
+        route: "/api/auth/request-password-reset",
+        stage: "profile_lookup",
+        email,
+      });
       return sendJson(res, 500, { error: "Failed to verify user" });
     }
 
@@ -75,6 +86,11 @@ export default async function handler(req: any, res: any) {
       .eq("email", email);
 
     if (deleteError) {
+      await captureServerError(deleteError, {
+        route: "/api/auth/request-password-reset",
+        stage: "delete_existing_token",
+        email,
+      });
       return sendJson(res, 500, { error: "Failed to create reset link" });
     }
 
@@ -83,6 +99,11 @@ export default async function handler(req: any, res: any) {
       .insert([{ email, code: token, expires_at: expiresAt }]);
 
     if (insertError) {
+      await captureServerError(insertError, {
+        route: "/api/auth/request-password-reset",
+        stage: "insert_reset_token",
+        email,
+      });
       return sendJson(res, 500, { error: "Failed to create reset link" });
     }
 
@@ -119,6 +140,10 @@ export default async function handler(req: any, res: any) {
     return sendJson(res, 200, { success: true });
   } catch (error) {
     console.error("[request-password-reset] Failed", error);
+    await captureServerError(error, {
+      route: "/api/auth/request-password-reset",
+      stage: "unhandled",
+    });
     return sendJson(res, 500, { error: "Failed to send password reset link" });
   }
 }

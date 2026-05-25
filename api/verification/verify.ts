@@ -1,3 +1,5 @@
+import { captureServerError } from "../../server/sentry";
+
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
     return JSON.parse(body || "{}");
@@ -27,6 +29,11 @@ export default async function handler(req: any, res: any) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
     if (!supabaseUrl || !supabaseKey) {
+      await captureServerError(new Error("Missing Supabase configuration"), {
+        route: "/api/verification/verify",
+        stage: "configuration",
+        email,
+      });
       return sendJson(res, 500, { error: "Verification failed" });
     }
 
@@ -56,12 +63,21 @@ export default async function handler(req: any, res: any) {
       .eq("email", email);
 
     if (deleteResult.error) {
+      await captureServerError(deleteResult.error, {
+        route: "/api/verification/verify",
+        stage: "delete_code",
+        email,
+      });
       return sendJson(res, 500, { error: "Verification failed" });
     }
 
     return sendJson(res, 200, { success: true });
   } catch (error) {
     console.error("[verification/verify] Failed", error);
+    await captureServerError(error, {
+      route: "/api/verification/verify",
+      stage: "unhandled",
+    });
     return sendJson(res, 500, { error: "Verification failed" });
   }
 }

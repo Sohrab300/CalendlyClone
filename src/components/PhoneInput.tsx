@@ -25,42 +25,6 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   );
   const [phoneNumber, setPhoneNumber] = React.useState('');
 
-  // Auto-detect country
-  React.useEffect(() => {
-    const detectCountry = async () => {
-      try {
-        // Try ipwho.is first as it's generally more reliable for client-side
-        const response = await fetch('https://ipwho.is/');
-        const data = await response.json();
-        
-        if (data.country_code) {
-          const detected = countries.find(c => c.code.toLowerCase() === data.country_code.toLowerCase());
-          if (detected) {
-            setSelectedCountry(detected);
-            return;
-          }
-        }
-      } catch (error) {
-        console.warn('Primary country detection failed, trying fallback...', error);
-        
-        // Fallback to ipapi.co
-        try {
-          const response = await fetch('https://ipapi.co/json/');
-          const data = await response.json();
-          if (data.country_code) {
-            const detected = countries.find(c => c.code.toLowerCase() === data.country_code.toLowerCase());
-            if (detected) {
-              setSelectedCountry(detected);
-            }
-          }
-        } catch (fallbackError) {
-          console.error('All country detection attempts failed:', fallbackError);
-        }
-      }
-    };
-    detectCountry();
-  }, []);
-
   // Sync internal state with external value
   React.useEffect(() => {
     if (value) {

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
 import { buildOAuthRedirectUrl } from '../lib/authDebug';
+import { captureAppError } from '../lib/sentry';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -25,7 +26,11 @@ export const LoginPage: React.FC = () => {
         await ensureProfileForSession(session, user);
         navigate(from, { replace: true });
       }
-    }).catch(() => {
+    }).catch((error) => {
+      captureAppError(error, {
+        route: '/admin/login',
+        stage: 'session_profile_load',
+      });
       toast.error('We could not load your profile. Please try logging in again.');
     });
 
@@ -53,12 +58,28 @@ export const LoginPage: React.FC = () => {
       });
 
       if (error) {
+        captureAppError(error, {
+          route: '/admin/login',
+          stage: 'password_login',
+          email,
+        });
         toast.error(error.message);
         setLoading(false);
       } else {
-        const { session, user } = await getValidatedSession();
-        if (session && user) {
-          await ensureProfileForSession(session, user);
+        try {
+          const { session, user } = await getValidatedSession();
+          if (session && user) {
+            await ensureProfileForSession(session, user);
+          }
+        } catch (error) {
+          captureAppError(error, {
+            route: '/admin/login',
+            stage: 'post_login_profile_setup',
+            email,
+          });
+          toast.error('We could not load your profile. Please try logging in again.');
+          setLoading(false);
+          return;
         }
         toast.success('Logged in successfully');
         navigate(from, { replace: true });
@@ -89,6 +110,11 @@ export const LoginPage: React.FC = () => {
       }
     });
     if (error) {
+      captureAppError(error, {
+        route: '/admin/login',
+        stage: 'social_login_start',
+        provider,
+      });
       toast.error(error.message);
     }
   };

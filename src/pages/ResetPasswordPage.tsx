@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { BrandLogo } from "../components/BrandLogo";
+import { captureAppError } from "../lib/sentry";
 
 const readApiResponse = async (response: Response) => {
   const text = await response.text();
@@ -48,12 +49,23 @@ export default function ResetPasswordPage() {
       const data = await readApiResponse(response);
 
       if (!response.ok) {
+        captureAppError(new Error(data.error || "Failed to update password"), {
+          route: "/reset-password",
+          stage: "reset_password",
+          status: response.status,
+          email,
+        });
         toast.error(data.error || "Failed to update password");
         return;
       }
 
       setIsComplete(true);
-    } catch {
+    } catch (error) {
+      captureAppError(error, {
+        route: "/reset-password",
+        stage: "reset_password",
+        email,
+      });
       toast.error("Failed to update password");
     } finally {
       setLoading(false);

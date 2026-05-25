@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { BrandLogo } from "../components/BrandLogo";
 import { buildOAuthRedirectUrl } from "../lib/authDebug";
+import { captureAppError } from "../lib/sentry";
 
 type SignupStep = 1 | 2 | 3 | 4 | 5;
 
@@ -66,7 +67,13 @@ export default function SignupPage() {
       .then(() => {
         setAccountSetupStatus("done");
       })
-      .catch(async () => {
+      .catch(async (error) => {
+        captureAppError(error, {
+          route: "/signup",
+          stage: "account_setup",
+          email: user?.email,
+          userId: user?.id,
+        });
         setAccountSetupStatus("error");
         await supabase.auth.signOut({ scope: "local" });
         throw new Error("Account setup failed");
@@ -81,7 +88,11 @@ export default function SignupPage() {
 
     try {
       await accountSetupPromiseRef.current;
-    } catch {
+    } catch (error) {
+      captureAppError(error, {
+        route: "/signup",
+        stage: "wait_for_account_setup",
+      });
       toast.error("We could not finish setting up your profile. Please try again.");
       throw new Error("Account setup failed");
     }
@@ -121,7 +132,13 @@ export default function SignupPage() {
       }
     };
 
-    handleAuthCallback();
+    handleAuthCallback().catch((error) => {
+      captureAppError(error, {
+        route: "/signup",
+        stage: "oauth_callback",
+      });
+      toast.error("We could not finish sign up. Please try again.");
+    });
   }, [navigate]);
 
   const handleGoogleLogin = async () => {
@@ -154,6 +171,10 @@ export default function SignupPage() {
       },
     });
     if (error) {
+      captureAppError(error, {
+        route: "/signup",
+        stage: "google_oauth_start",
+      });
       sessionStorage.removeItem("devschedule_signup_flow");
       toast.error(error.message);
       setLoading(false);
@@ -177,9 +198,20 @@ export default function SignupPage() {
         toast.success("OTP sent to your email");
         setStep(2);
       } else {
+        captureAppError(new Error(data.error || "Failed to send OTP"), {
+          route: "/signup",
+          stage: "send_signup_otp",
+          status: response.status,
+          email,
+        });
         toast.error(data.error || "Failed to send OTP");
       }
-    } catch {
+    } catch (error) {
+      captureAppError(error, {
+        route: "/signup",
+        stage: "send_signup_otp",
+        email,
+      });
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
@@ -203,9 +235,20 @@ export default function SignupPage() {
       if (response.ok) {
         setStep(3);
       } else {
+        captureAppError(new Error(data.error || "Invalid or expired OTP"), {
+          route: "/signup",
+          stage: "verify_signup_otp",
+          status: response.status,
+          email,
+        });
         toast.error(data.error || "Invalid or expired OTP. Please try again.");
       }
-    } catch {
+    } catch (error) {
+      captureAppError(error, {
+        route: "/signup",
+        stage: "verify_signup_otp",
+        email,
+      });
       toast.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
@@ -253,6 +296,11 @@ export default function SignupPage() {
         .maybeSingle();
 
       if (usernameError) {
+        captureAppError(usernameError, {
+          route: "/signup",
+          stage: "username_lookup",
+          username,
+        });
         toast.error("Could not validate username. Please try again.");
         setLoading(false);
         return;
@@ -276,6 +324,12 @@ export default function SignupPage() {
       });
 
       if (authError) {
+        captureAppError(authError, {
+          route: "/signup",
+          stage: "manual_signup",
+          email,
+          username,
+        });
         toast.error(authError.message);
         setLoading(false);
         return;
@@ -295,6 +349,12 @@ export default function SignupPage() {
         });
       }
     } catch (err) {
+      captureAppError(err, {
+        route: "/signup",
+        stage: "create_profile",
+        email,
+        username,
+      });
       toast.error("Failed to create account");
     } finally {
       setLoading(false);
@@ -320,6 +380,10 @@ export default function SignupPage() {
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
+        captureAppError(error, {
+          route: "/signup",
+          stage: "set_oauth_password",
+        });
         toast.error(error.message);
         return;
       }
@@ -332,7 +396,11 @@ export default function SignupPage() {
 
       toast.success("Password saved successfully");
       navigate("/admin");
-    } catch {
+    } catch (error) {
+      captureAppError(error, {
+        route: "/signup",
+        stage: "set_oauth_password",
+      });
       toast.error("Failed to save password. Please try again.");
     } finally {
       setLoading(false);
@@ -344,7 +412,11 @@ export default function SignupPage() {
     try {
       await waitForAccountSetup();
       navigate("/admin");
-    } catch {
+    } catch (error) {
+      captureAppError(error, {
+        route: "/signup",
+        stage: "skip_google_wait_for_setup",
+      });
       // waitForAccountSetup already shows the actionable error.
     } finally {
       setLoading(false);

@@ -1,3 +1,5 @@
+import { captureServerError } from "../../server/sentry";
+
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
     return JSON.parse(body || "{}");
@@ -25,6 +27,11 @@ const notifyVerificationFailure = async ({
     email,
     stage,
     error: error instanceof Error ? error.message : String(error),
+  });
+  await captureServerError(error, {
+    route: "/api/verification/send",
+    email,
+    stage,
   });
 
   if (!emailUser || !emailPass) return;

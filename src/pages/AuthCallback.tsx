@@ -4,6 +4,7 @@ import { getValidatedSession, supabase } from '../lib/supabase';
 import { ensureProfileForSession } from '../services/profileService';
 import { Loader2 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo';
+import { captureAppError } from '../lib/sentry';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -17,6 +18,10 @@ export default function AuthCallback() {
       const { session, user, error } = await getValidatedSession();
       
       if (error) {
+        captureAppError(error, {
+          route: '/auth/callback',
+          stage: 'validate_session',
+        });
         navigate('/admin/login');
         return;
       }
@@ -24,7 +29,12 @@ export default function AuthCallback() {
       if (session && user) {
         try {
           await ensureProfileForSession(session, user);
-        } catch {
+        } catch (error) {
+          captureAppError(error, {
+            route: '/auth/callback',
+            stage: 'ensure_profile',
+            userId: user.id,
+          });
           await supabase.auth.signOut({ scope: "local" });
           navigate('/admin/login');
           return;
@@ -40,7 +50,13 @@ export default function AuthCallback() {
       }
     };
 
-    handleCallback();
+    handleCallback().catch((error) => {
+      captureAppError(error, {
+        route: '/auth/callback',
+        stage: 'unhandled',
+      });
+      navigate('/admin/login');
+    });
   }, [navigate]);
 
   return (

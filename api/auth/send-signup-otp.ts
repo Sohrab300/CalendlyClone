@@ -1,3 +1,5 @@
+import { captureServerError } from "../../server/sentry";
+
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
     return JSON.parse(body || "{}");
@@ -32,12 +34,22 @@ export default async function handler(req: any, res: any) {
     const emailPass = process.env.EMAIL_PASS?.trim();
 
     if (!supabaseUrl || !supabaseKey) {
+      await captureServerError(new Error("Missing Supabase configuration"), {
+        route: "/api/auth/send-signup-otp",
+        stage: "configuration",
+        email,
+      });
       return sendJson(res, 500, {
         error: "Failed to send verification code",
       });
     }
 
     if (!emailUser || !emailPass) {
+      await captureServerError(new Error("Missing email configuration"), {
+        route: "/api/auth/send-signup-otp",
+        stage: "configuration",
+        email,
+      });
       return sendJson(res, 500, {
         error: "Failed to send verification code",
       });
@@ -57,6 +69,11 @@ export default async function handler(req: any, res: any) {
       .eq("email", email);
 
     if (deleteResult.error) {
+      await captureServerError(deleteResult.error, {
+        route: "/api/auth/send-signup-otp",
+        stage: "delete_existing_code",
+        email,
+      });
       return sendJson(res, 500, {
         error: "Failed to send verification code",
       });
@@ -70,6 +87,11 @@ export default async function handler(req: any, res: any) {
       .insert([{ email, code, expires_at: expiresAt }]);
 
     if (insertResult.error) {
+      await captureServerError(insertResult.error, {
+        route: "/api/auth/send-signup-otp",
+        stage: "insert_code",
+        email,
+      });
       return sendJson(res, 500, {
         error: "Failed to send verification code",
       });
@@ -104,6 +126,11 @@ export default async function handler(req: any, res: any) {
         `,
       });
     } catch (error) {
+      await captureServerError(error, {
+        route: "/api/auth/send-signup-otp",
+        stage: "send_email",
+        email,
+      });
       return sendJson(res, 500, {
         error: "Failed to send verification code",
       });
@@ -111,6 +138,10 @@ export default async function handler(req: any, res: any) {
 
     return sendJson(res, 200, { success: true });
   } catch (error) {
+    await captureServerError(error, {
+      route: "/api/auth/send-signup-otp",
+      stage: "unhandled",
+    });
     return sendJson(res, 500, {
       error: "Failed to send verification code",
     });

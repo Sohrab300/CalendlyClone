@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { captureServerError } from "../server/sentry";
 
 type HostProfile = {
   id: string;
@@ -53,6 +54,13 @@ const notifySchedulingFailure = async ({
   };
 
   console.error("[api/schedule] Scheduling failure", payload);
+  await captureServerError(error, {
+    route: "/api/schedule",
+    requestId,
+    stage,
+    status,
+    context,
+  });
 
   const emailUser = process.env.EMAIL_USER?.trim();
   const emailPass = process.env.EMAIL_PASS?.trim();

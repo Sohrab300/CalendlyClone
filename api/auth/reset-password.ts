@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { captureServerError } from "../../server/sentry";
 
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
@@ -44,6 +45,11 @@ export default async function handler(req: any, res: any) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
     if (!supabaseUrl || !supabaseServiceKey) {
+      await captureServerError(new Error("Password reset configuration missing"), {
+        route: "/api/auth/reset-password",
+        stage: "configuration",
+        email,
+      });
       return sendJson(res, 500, { error: "Password reset is not configured" });
     }
 
@@ -69,6 +75,13 @@ export default async function handler(req: any, res: any) {
       .maybeSingle();
 
     if (profileError || !profile?.id) {
+      if (profileError) {
+        await captureServerError(profileError, {
+          route: "/api/auth/reset-password",
+          stage: "profile_lookup",
+          email,
+        });
+      }
       return sendJson(res, 404, { error: "User doesn't exist" });
     }
 
@@ -78,6 +91,12 @@ export default async function handler(req: any, res: any) {
     );
 
     if (updateError) {
+      await captureServerError(updateError, {
+        route: "/api/auth/reset-password",
+        stage: "update_password",
+        email,
+        userId: profile.id,
+      });
       return sendJson(res, 500, { error: "Failed to update password" });
     }
 
@@ -86,6 +105,10 @@ export default async function handler(req: any, res: any) {
     return sendJson(res, 200, { success: true });
   } catch (error) {
     console.error("[reset-password] Failed", error);
+    await captureServerError(error, {
+      route: "/api/auth/reset-password",
+      stage: "unhandled",
+    });
     return sendJson(res, 500, { error: "Failed to update password" });
   }
 }
