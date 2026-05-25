@@ -1,9 +1,11 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { google } from "googleapis";
 import { createClient } from "@supabase/supabase-js";
+import nodemailer from "nodemailer";
 import { OtpServiceError, sendOtp, verifyOtp } from "./server/otpService";
 
 dotenv.config();
@@ -743,6 +745,148 @@ async function startServer() {
         return res.status(err.statusCode).json({ error: err.message });
       }
       res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
+  app.post("/api/auth/request-password-reset", async (req, res) => {
+    const email = req.body?.email?.trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    if (!process.env.EMAIL_USER?.trim() || !process.env.EMAIL_PASS?.trim()) {
+      return res.status(500).json({ error: "Password reset is not configured" });
+    }
+
+    try {
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email, full_name")
+        .ilike("email", email)
+        .maybeSingle();
+
+      if (profileError) {
+        return res.status(500).json({ error: "Failed to verify user" });
+      }
+
+      if (!profile) {
+        return res.status(404).json({ error: "User doesn't exist" });
+      }
+
+      const token = `pwd_${randomBytes(32).toString("hex")}`;
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+      const { error: deleteError } = await supabaseAdmin
+        .from("verification_codes")
+        .delete()
+        .eq("email", email);
+
+      if (deleteError) {
+        return res.status(500).json({ error: "Failed to create reset link" });
+      }
+
+      const { error: insertError } = await supabaseAdmin
+        .from("verification_codes")
+        .insert([{ email, code: token, expires_at: expiresAt }]);
+
+      if (insertError) {
+        return res.status(500).json({ error: "Failed to create reset link" });
+      }
+
+      const resetUrl = `${req.protocol}://${req.get("host")}/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`;
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER.trim(),
+          pass: process.env.EMAIL_PASS.trim(),
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"DevSchedule" <${process.env.EMAIL_USER.trim()}>`,
+        to: email,
+        subject: "Reset your DevSchedule password",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
+            <h1 style="font-size: 24px; margin: 0 0 16px;">Reset your password</h1>
+            <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px; color: #475569;">
+              Use the button below to create a new password for your DevSchedule account.
+            </p>
+            <a href="${resetUrl}" style="display: inline-block; background: #006bff; color: #ffffff; text-decoration: none; font-weight: 700; padding: 14px 22px; border-radius: 10px;">Reset password</a>
+            <p style="font-size: 13px; color: #64748b; margin: 24px 0 0;">
+              This link is valid for 5 minutes only. If you did not request it, you can safely ignore this email.
+            </p>
+          </div>
+        `,
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[PasswordReset] Failed to send reset link:", error);
+      res.status(500).json({ error: "Failed to send password reset link" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const email = req.body?.email?.trim().toLowerCase();
+    const token = req.body?.token?.trim();
+    const password = req.body?.password || "";
+
+    if (!email || !token || !password) {
+      return res.status(400).json({ error: "Missing reset information" });
+    }
+
+    if (!token.startsWith("pwd_")) {
+      return res.status(400).json({ error: "Invalid or expired reset link" });
+    }
+
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters" });
+    }
+
+    try {
+      const { data: resetCode, error: resetError } = await supabaseAdmin
+        .from("verification_codes")
+        .select("*")
+        .eq("email", email)
+        .eq("code", token)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (
+        resetError ||
+        !resetCode ||
+        new Date() > new Date(resetCode.expires_at)
+      ) {
+        return res.status(400).json({ error: "Invalid or expired reset link" });
+      }
+
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
+
+      if (profileError || !profile?.id) {
+        return res.status(404).json({ error: "User doesn't exist" });
+      }
+
+      const { error: updateError } =
+        await supabaseAdmin.auth.admin.updateUserById(profile.id, {
+          password,
+        });
+
+      if (updateError) {
+        return res.status(500).json({ error: "Failed to update password" });
+      }
+
+      await supabaseAdmin.from("verification_codes").delete().eq("email", email);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[PasswordReset] Failed to update password:", error);
+      res.status(500).json({ error: "Failed to update password" });
     }
   });
 
