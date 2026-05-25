@@ -90,6 +90,7 @@ export const SettingsView: React.FC<{
             />
           ) : activeTab === "Communication settings" ? (
             <CommunicationSettingsPanel
+              onConnectGoogle={settings.handleConnectGoogle}
               onToggleNotifications={settings.handleToggleNotifications}
               profile={settings.profile}
             />

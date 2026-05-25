@@ -2,6 +2,7 @@ import React from 'react';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
 import { availabilityService } from '../../services/availabilityService';
+import { buildOAuthRedirectUrl } from '../../lib/authDebug';
 
 const DEFAULT_WELCOME_MESSAGE = 'Welcome to my scheduling page. Please follow the instructions to add an event to my calendar.';
 
@@ -182,6 +183,38 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
     }
   };
 
+  const handleConnectGoogle = async () => {
+    const redirectTo = buildOAuthRedirectUrl('/auth/callback');
+    const scopes = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.send';
+    const options = {
+      redirectTo,
+      scopes,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    };
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      toast.error('Please log in before connecting Google.');
+      return;
+    }
+
+    sessionStorage.setItem('devschedule_auth_redirect_after_callback', '/admin');
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options,
+    });
+
+    if (error) {
+      sessionStorage.removeItem('devschedule_auth_redirect_after_callback');
+      toast.error(error.message);
+    }
+  };
+
   const handleToggleBulkVerification = async (enabled: boolean) => {
     if (selectedEventIds.length === 0) return;
 
@@ -248,6 +281,7 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
     handleFileChange,
     handleRemoveBrandLogo,
     handleSave,
+    handleConnectGoogle,
     handleToggleBulkVerification,
     handleToggleNotifications,
     handleUploadClick,

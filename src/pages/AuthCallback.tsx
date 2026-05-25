@@ -30,7 +30,11 @@ export default function AuthCallback() {
           return;
         }
 
-        navigate('/admin');
+        const redirectTo =
+          sessionStorage.getItem('devschedule_auth_redirect_after_callback') ||
+          '/admin';
+        sessionStorage.removeItem('devschedule_auth_redirect_after_callback');
+        navigate(redirectTo);
       } else {
         navigate('/admin/login');
       }
