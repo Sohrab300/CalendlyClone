@@ -1,6 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
-import { OtpServiceError, sendOtp } from "../../server/otpService";
-
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
     return JSON.parse(body || "{}");
@@ -12,41 +9,174 @@ const getBody = (body: unknown) => {
 const sendJson = (res: any, status: number, body: Record<string, unknown>) =>
   res.status(status).json(body);
 
-export default async function handler(req: any, res: any) {
-  if (req.method !== "POST") {
-    return sendJson(res, 405, { error: "Method not allowed" });
-  }
+const notifyVerificationFailure = async ({
+  email,
+  stage,
+  error,
+}: {
+  email?: string;
+  stage: string;
+  error: unknown;
+}) => {
+  const emailUser = process.env.EMAIL_USER?.trim();
+  const emailPass = process.env.EMAIL_PASS?.trim();
 
-  const body = getBody(req.body) as { email?: string };
-  const email = body.email?.trim();
+  console.error("[verification/send] Failed", {
+    email,
+    stage,
+    error: error instanceof Error ? error.message : String(error),
+  });
 
-  if (!email) {
-    return sendJson(res, 400, { error: "Email is required" });
-  }
-
-  const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return sendJson(res, 500, { error: "Failed to send verification email" });
-  }
+  if (!emailUser || !emailPass) return;
 
   try {
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    await sendOtp(supabaseAdmin, email);
-    return sendJson(res, 200, { success: true });
-  } catch (error) {
-    console.error("Error sending verification email:", error);
+    const nodemailerModule = await import("nodemailer");
+    const nodemailer = nodemailerModule.default || nodemailerModule;
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+    });
 
-    if (error instanceof OtpServiceError) {
-      return sendJson(res, error.statusCode, { error: error.message });
+    await transporter.sendMail({
+      from: `"DevSchedule Alerts" <${emailUser}>`,
+      to: emailUser,
+      subject: `DevSchedule invitee verification failed: ${stage}`,
+      text: JSON.stringify(
+        {
+          email,
+          stage,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        null,
+        2,
+      ),
+    });
+  } catch (notificationError) {
+    console.error("[verification/send] Failed to send alert", notificationError);
+  }
+};
+
+export default async function handler(req: any, res: any) {
+  try {
+    if (req.method !== "POST") {
+      return sendJson(res, 405, { error: "Method not allowed" });
     }
 
+    const body = getBody(req.body) as { email?: string; meetingName?: string };
+    const email = body.email?.trim().toLowerCase();
+
+    if (!email) {
+      return sendJson(res, 400, { error: "Email is required" });
+    }
+
+    const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const emailUser = process.env.EMAIL_USER?.trim();
+    const emailPass = process.env.EMAIL_PASS?.trim();
+
+    if (!supabaseUrl || !supabaseKey || !emailUser || !emailPass) {
+      await notifyVerificationFailure({
+        email,
+        stage: "configuration",
+        error: new Error("Missing Supabase or email configuration"),
+      });
+      return sendJson(res, 500, {
+        error: "Failed to send verification code",
+      });
+    }
+
+    const [{ createClient }, nodemailerModule] = await Promise.all([
+      import("@supabase/supabase-js"),
+      import("nodemailer"),
+    ]);
+
+    const nodemailer = nodemailerModule.default || nodemailerModule;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+    const deleteResult = await supabaseAdmin
+      .from("verification_codes")
+      .delete()
+      .eq("email", email);
+
+    if (deleteResult.error) {
+      await notifyVerificationFailure({
+        email,
+        stage: "delete_existing_code",
+        error: deleteResult.error,
+      });
+      return sendJson(res, 500, {
+        error: "Failed to send verification code",
+      });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    const insertResult = await supabaseAdmin
+      .from("verification_codes")
+      .insert([{ email, code, expires_at: expiresAt }]);
+
+    if (insertResult.error) {
+      await notifyVerificationFailure({
+        email,
+        stage: "insert_code",
+        error: insertResult.error,
+      });
+      return sendJson(res, 500, {
+        error: "Failed to send verification code",
+      });
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"DevSchedule" <${emailUser}>`,
+        to: email,
+        subject: "Your DevSchedule verification code",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #0f172a;">
+            <h1 style="font-size: 24px; margin: 0 0 16px;">Verify your email</h1>
+            <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px; color: #475569;">
+              Use this one-time code to continue booking your meeting${body.meetingName ? ` for ${body.meetingName}` : ""}.
+            </p>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 28px; text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #020617; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">${code}</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin: 0;">
+              This code expires in 10 minutes. If you did not request it, you can safely ignore this email.
+            </p>
+          </div>
+        `,
+      });
+    } catch (error) {
+      await notifyVerificationFailure({
+        email,
+        stage: "send_email",
+        error,
+      });
+      return sendJson(res, 500, {
+        error: "Failed to send verification code",
+      });
+    }
+
+    return sendJson(res, 200, { success: true });
+  } catch (error) {
+    await notifyVerificationFailure({
+      stage: "unhandled",
+      error,
+    });
     return sendJson(res, 500, {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Failed to send verification email",
+      error: "Failed to send verification code",
     });
   }
 }
