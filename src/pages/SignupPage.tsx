@@ -46,6 +46,9 @@ const hasOAuthCallbackParams = () => {
 export default function SignupPage() {
   const [step, setStep] = useState<SignupStep>(1);
   const [loading, setLoading] = useState(false);
+  const [accountSetupStatus, setAccountSetupStatus] = useState<
+    "idle" | "running" | "done" | "error"
+  >("idle");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [fullName, setFullName] = useState("");
@@ -55,6 +58,34 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const authCallbackHandledRef = useRef(false);
+  const accountSetupPromiseRef = useRef<Promise<void> | null>(null);
+
+  const startAccountSetup = (session: any, user: any) => {
+    setAccountSetupStatus("running");
+    const setupPromise = ensureProfileForSession(session, user)
+      .then(() => {
+        setAccountSetupStatus("done");
+      })
+      .catch(async () => {
+        setAccountSetupStatus("error");
+        await supabase.auth.signOut({ scope: "local" });
+        throw new Error("Account setup failed");
+      });
+
+    accountSetupPromiseRef.current = setupPromise;
+    return setupPromise;
+  };
+
+  const waitForAccountSetup = async () => {
+    if (!accountSetupPromiseRef.current) return;
+
+    try {
+      await accountSetupPromiseRef.current;
+    } catch {
+      toast.error("We could not finish setting up your profile. Please try again.");
+      throw new Error("Account setup failed");
+    }
+  };
 
   // Handle Google OAuth callback for Method 1 and Step 4
   useEffect(() => {
@@ -66,25 +97,27 @@ export default function SignupPage() {
       const { session, user } = await getValidatedSession();
 
       if (session && user) {
-        try {
-          await ensureProfileForSession(session, user);
-        } catch {
-          await supabase.auth.signOut({ scope: "local" });
-          toast.error("We could not finish setting up your profile. Please try again.");
-          return;
-        }
-
         const signupFlow = sessionStorage.getItem("devschedule_signup_flow");
         sessionStorage.removeItem("devschedule_signup_flow");
 
         if (signupFlow === "manual_google_connect") {
-          navigate("/admin");
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setStep(4);
+          startAccountSetup(session, user)
+            .then(() => navigate("/admin"))
+            .catch(() => {
+              toast.error("We could not finish setting up your profile. Please try again.");
+            });
           return;
         }
 
         setPassword("");
         setConfirmPassword("");
         setStep(5);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        startAccountSetup(session, user).catch(() => {
+          toast.error("We could not finish setting up your profile. Please try again.");
+        });
       }
     };
 
@@ -93,6 +126,15 @@ export default function SignupPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    if (step === 4) {
+      try {
+        await waitForAccountSetup();
+      } catch {
+        setLoading(false);
+        return;
+      }
+    }
+
     sessionStorage.setItem(
       "devschedule_signup_flow",
       step === 4 ? "manual_google_connect" : "google_signup",
@@ -240,35 +282,17 @@ export default function SignupPage() {
       }
 
       if (authData.user) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert([
-            {
-              id: authData.user.id,
-              full_name: fullName,
-              username: username,
-              email: email,
-            },
-          ]);
+        const { data: { session } } = await supabase.auth.getSession();
 
-        if (profileError) {
-          if (authData.session) {
-            await ensureProfileForSession(authData.session, authData.user);
-            setStep(4);
-          } else {
-            toast.error(profileError.message);
-          }
-        } else {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              await ensureProfileForSession(session, authData.user);
-            }
-          } catch {
-            toast.error("Your account was created, but setup did not finish. Please sign in again.");
-          }
-          setStep(4);
+        if (!session) {
+          toast.error("Your account was created, but we could not start your session. Please log in.");
+          return;
         }
+
+        setStep(4);
+        startAccountSetup(session, authData.user).catch(() => {
+          toast.error("We could not finish setting up your profile. Please try again.");
+        });
       }
     } catch (err) {
       toast.error("Failed to create account");
@@ -300,6 +324,12 @@ export default function SignupPage() {
         return;
       }
 
+      try {
+        await waitForAccountSetup();
+      } catch {
+        return;
+      }
+
       toast.success("Password saved successfully");
       navigate("/admin");
     } catch {
@@ -309,8 +339,16 @@ export default function SignupPage() {
     }
   };
 
-  const skipGoogle = () => {
-    navigate("/admin");
+  const skipGoogle = async () => {
+    setLoading(true);
+    try {
+      await waitForAccountSetup();
+      navigate("/admin");
+    } catch {
+      // waitForAccountSetup already shows the actionable error.
+    } finally {
+      setLoading(false);
+    }
   };
 
   const stepVariants = {
@@ -593,6 +631,17 @@ export default function SignupPage() {
                 <p className="text-slate-500 text-sm mb-8 leading-relaxed">
                   To send booking confirmations and manage your calendar, we need access to:
                 </p>
+                {accountSetupStatus === "running" && (
+                  <div className="mb-6 flex items-center justify-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Setting up your account
+                  </div>
+                )}
+                {accountSetupStatus === "error" && (
+                  <div className="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    Account setup failed. Please try signing up again.
+                  </div>
+                )}
 
                 <div className="space-y-4 mb-10 text-left">
                   <div className="flex gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
@@ -618,13 +667,14 @@ export default function SignupPage() {
                 <div className="space-y-4">
                   <button
                     onClick={handleGoogleLogin}
-                    disabled={loading}
+                    disabled={loading || accountSetupStatus === "error"}
                     className="w-full py-4 bg-[#006bff] text-white rounded-xl font-bold text-lg hover:bg-[#0052cc] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100"
                   >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Connect Google Account"}
                   </button>
                   <button
                     onClick={skipGoogle}
+                    disabled={loading || accountSetupStatus === "error"}
                     className="text-slate-400 text-sm font-bold hover:text-slate-600 transition-colors"
                   >
                     Skip for now
@@ -647,6 +697,17 @@ export default function SignupPage() {
                 <p className="text-slate-500 text-sm mb-8 leading-relaxed">
                   Use this password when you log in with your email.
                 </p>
+                {accountSetupStatus === "running" && (
+                  <div className="mb-6 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Setting up your account in the background
+                  </div>
+                )}
+                {accountSetupStatus === "error" && (
+                  <div className="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    Account setup failed. Please try signing up again.
+                  </div>
+                )}
 
                 <form onSubmit={setOAuthPassword} className="space-y-6">
                   <div className="space-y-1.5">
@@ -687,7 +748,12 @@ export default function SignupPage() {
 
                   <button
                     type="submit"
-                    disabled={loading || !password || !confirmPassword}
+                    disabled={
+                      loading ||
+                      !password ||
+                      !confirmPassword ||
+                      accountSetupStatus === "error"
+                    }
                     className="w-full py-4 bg-[#006bff] text-white rounded-xl font-bold text-lg hover:bg-[#0052cc] transition-all flex items-center justify-center gap-2 disabled:opacity-70 shadow-lg shadow-blue-100"
                   >
                     {loading ? (
