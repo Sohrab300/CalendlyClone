@@ -15,6 +15,7 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isUploading, setIsUploading] = React.useState(false);
   const [isUploadingBrand, setIsUploadingBrand] = React.useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const brandLogoInputRef = React.useRef<HTMLInputElement>(null);
   const [formData, setFormData] = React.useState({
@@ -289,6 +290,38 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
     setSelectedEventIds(prev => prev.includes(id) ? prev.filter(eventId => eventId !== id) : [...prev, id]);
   };
 
+  const handleDeleteAccount = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
+      toast.success('Account deleted successfully');
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      captureAppError(error, {
+        route: '/admin',
+        stage: 'delete_account',
+        userId: profile?.id,
+      });
+      toast.error(error.message || 'Failed to delete account');
+    }
+  };
+
   const upsertProfile = async (overrides: Record<string, any>) => {
     const { data: updatedData, error } = await supabase
       .from('profiles')
@@ -326,6 +359,7 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
     fileInputRef,
     formData,
     handleBrandLogoFileChange,
+    handleDeleteAccount,
     handleDeleteAvatar,
     handleFileChange,
     handleRemoveBrandLogo,
@@ -334,11 +368,13 @@ export function useSettings(onProfileUpdate?: (profile: any) => void) {
     handleToggleBulkVerification,
     handleToggleNotifications,
     handleUploadClick,
+    isDeleteModalOpen,
     isLoading,
     isUploading,
     isUploadingBrand,
     profile,
     selectedEventIds,
+    setDeleteModalOpen: setIsDeleteModalOpen,
     setEventSearchTerm,
     setSelectedEventIds,
     toggleSelectedEvent,

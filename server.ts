@@ -669,6 +669,38 @@ async function startServer() {
     }
   });
 
+  app.post("/api/auth/delete-account", async (req, res) => {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length)
+      : "";
+
+    if (!token) {
+      return res.status(401).json({ error: "Missing access token" });
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (error || !data.user) {
+        return res.status(401).json({ error: "Invalid access token" });
+      }
+
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
+        data.user.id,
+      );
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[DeleteAccount] Failed to delete account:", error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
+  });
+
   // API Route for sending verification OTP
   app.post("/api/verification/send", async (req, res) => {
     const { email } = req.body;

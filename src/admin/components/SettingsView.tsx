@@ -8,6 +8,7 @@ import { LinkSettingsPanel } from "./settings/LinkSettingsPanel";
 import { CommunicationSettingsPanel } from "./settings/CommunicationSettingsPanel";
 import { SecuritySettingsPanel } from "./settings/SecuritySettingsPanel";
 import { useSettings } from "../hooks/useSettings";
+import { DeleteAccountModal } from "./settings/DeleteAccountModal";
 
 export const SettingsView: React.FC<{
   onBack: () => void;
@@ -66,6 +67,7 @@ export const SettingsView: React.FC<{
               isUploading={settings.isUploading}
               onBack={onBack}
               onDeleteAvatar={settings.handleDeleteAvatar}
+              onDeleteAccount={() => settings.setDeleteModalOpen(true)}
               onFileChange={settings.handleFileChange}
               onSave={settings.handleSave}
               onUpdateFormData={settings.updateFormData}
@@ -115,6 +117,12 @@ export const SettingsView: React.FC<{
           )}
         </div>
       </div>
+
+      <DeleteAccountModal
+        isOpen={settings.isDeleteModalOpen}
+        onClose={() => settings.setDeleteModalOpen(false)}
+        onConfirm={settings.handleDeleteAccount}
+      />
     </AdminShell>
   );
 };

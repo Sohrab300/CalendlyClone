@@ -1,38 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { getValidatedSession, supabase } from '../lib/supabase';
-import { ensureProfileForSession } from '../services/profileService';
-import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
-import { BrandLogo } from '../components/BrandLogo';
-import { buildOAuthRedirectUrl } from '../lib/authDebug';
-import { captureAppError } from '../lib/sentry';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getValidatedSession, supabase } from "../lib/supabase";
+import { ensureProfileForSession } from "../services/profileService";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { BrandLogo } from "../components/BrandLogo";
+import { buildOAuthRedirectUrl } from "../lib/authDebug";
+import { captureAppError } from "../lib/sentry";
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || '/admin';
+  const from = (location.state as any)?.from?.pathname || "/admin";
 
   useEffect(() => {
     let isMounted = true;
 
-    getValidatedSession().then(async ({ session, user }) => {
-      if (isMounted && session && user) {
-        await ensureProfileForSession(session, user);
-        navigate(from, { replace: true });
-      }
-    }).catch((error) => {
-      captureAppError(error, {
-        route: '/admin/login',
-        stage: 'session_profile_load',
+    getValidatedSession()
+      .then(async ({ session, user }) => {
+        if (isMounted && session && user) {
+          await ensureProfileForSession(session, user);
+          navigate(from, { replace: true });
+        }
+      })
+      .catch((error) => {
+        captureAppError(error, {
+          route: "/admin/login",
+          stage: "session_profile_load",
+        });
+        toast.error(
+          "We could not load your profile. Please try logging in again.",
+        );
       });
-      toast.error('We could not load your profile. Please try logging in again.');
-    });
 
     return () => {
       isMounted = false;
@@ -44,13 +48,13 @@ export const LoginPage: React.FC = () => {
     if (!email) return;
 
     setLoading(true);
-    
+
     // We try to sign in with OTP (Magic Link) as default based on the UI "Enter your email" -> "Continue"
-    // However, if the user wants to use a password, we should handle that too. 
+    // However, if the user wants to use a password, we should handle that too.
     // To keep it simple and match the "Continue" button feel:
     // We'll check if they typed a password. If not, we'll send a magic link.
     // But since the user might want a simple setup, we can also just show the password field right away or toggle it.
-    
+
     if (showPassword) {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -59,8 +63,8 @@ export const LoginPage: React.FC = () => {
 
       if (error) {
         captureAppError(error, {
-          route: '/admin/login',
-          stage: 'password_login',
+          route: "/admin/login",
+          stage: "password_login",
           email,
         });
         toast.error(error.message);
@@ -73,46 +77,48 @@ export const LoginPage: React.FC = () => {
           }
         } catch (error) {
           captureAppError(error, {
-            route: '/admin/login',
-            stage: 'post_login_profile_setup',
+            route: "/admin/login",
+            stage: "post_login_profile_setup",
             email,
           });
-          toast.error('We could not load your profile. Please try logging in again.');
+          toast.error(
+            "We could not load your profile. Please try logging in again.",
+          );
           setLoading(false);
           return;
         }
-        toast.success('Logged in successfully');
+        toast.success("Logged in successfully");
         navigate(from, { replace: true });
       }
     } else {
       // Check if user exists or just try to send magic link
       // For this demo/task, we'll offer a way to enter password if they "Continue" but want to use credentials.
-      // Or we can just use Magic link. 
+      // Or we can just use Magic link.
       // The user mentioned "manually make users", so maybe they will set passwords.
-      
+
       // Let's offer a "Use password instead" or just show password field if they want.
-      // I'll stick to a simple multi-step or just regular form. 
+      // I'll stick to a simple multi-step or just regular form.
       // Given the "Continue" button, let's assume it leads to password or magic link.
-      
+
       // For now, let's make it a robust Email/Password login but styled like the image.
       setShowPassword(true);
       setLoading(false);
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'azure') => {
-    const redirectTo = buildOAuthRedirectUrl('/auth/callback');
+  const handleSocialLogin = async (provider: "google" | "azure") => {
+    const redirectTo = buildOAuthRedirectUrl("/auth/callback");
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo,
-      }
+      },
     });
     if (error) {
       captureAppError(error, {
-        route: '/admin/login',
-        stage: 'social_login_start',
+        route: "/admin/login",
+        stage: "social_login_start",
         provider,
       });
       toast.error(error.message);
@@ -123,12 +129,20 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-white flex flex-col items-center pt-8 md:pt-16 px-4">
       {/* Logo */}
       <div className="mb-12 md:mb-20">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <BrandLogo iconClassName="h-10 w-10" textClassName="text-2xl md:text-3xl" />
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => navigate("/")}
+        >
+          <BrandLogo
+            iconClassName="h-10 w-10"
+            textClassName="text-2xl md:text-3xl"
+          />
         </div>
       </div>
 
-      <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-8 md:mb-12">Log in to your account</h1>
+      <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-8 md:mb-12">
+        Log in to your account
+      </h1>
 
       <div className="w-full max-w-[440px] bg-white border border-gray-100 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 md:p-10">
         <form onSubmit={handleEmailSubmit} className="space-y-4">
@@ -156,7 +170,7 @@ export const LoginPage: React.FC = () => {
               <div className="mt-3 text-right">
                 <button
                   type="button"
-                  onClick={() => navigate('/forgot-password')}
+                  onClick={() => navigate("/forgot-password")}
                   className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Forgot password?
@@ -170,7 +184,13 @@ export const LoginPage: React.FC = () => {
             disabled={loading}
             className="w-full py-4 bg-[#006bff] text-white rounded-xl font-bold text-lg hover:bg-[#0052cc] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (showPassword ? 'Log in' : 'Continue')}
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : showPassword ? (
+              "Log in"
+            ) : (
+              "Continue"
+            )}
           </button>
         </form>
 
@@ -184,22 +204,36 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          <button 
-            onClick={() => handleSocialLogin('google')}
+          <button
+            onClick={() => handleSocialLogin("google")}
             className="w-full py-4 border border-gray-300 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-50 transition-all group"
           >
             <div className="w-6 h-6 flex items-center justify-center">
-               <svg viewBox="0 0 24 24" className="w-5 h-5">
-                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-               </svg>
+              <svg viewBox="0 0 24 24" className="w-5 h-5">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"
+                />
+              </svg>
             </div>
-            <span className="font-bold text-slate-700">Continue with Google</span>
+            <span className="font-bold text-slate-700">
+              Continue with Google
+            </span>
           </button>
 
-          <button 
+          {/* <button 
             onClick={() => handleSocialLogin('azure')}
             className="w-full py-4 border border-gray-300 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-50 transition-all group"
           >
@@ -213,7 +247,7 @@ export const LoginPage: React.FC = () => {
                </svg>
             </div>
             <span className="font-bold text-slate-700">Continue with Microsoft</span>
-          </button>
+          </button> */}
         </div>
       </div>
     </div>
