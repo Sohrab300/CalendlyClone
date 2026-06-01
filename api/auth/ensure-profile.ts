@@ -35,6 +35,62 @@ const getUniqueUsername = async (
   return `${baseUsername}${Date.now()}`;
 };
 
+const deleteAppDataForUser = async ({
+  supabaseAdmin,
+  userId,
+  email,
+}: {
+  supabaseAdmin: any;
+  userId: string;
+  email?: string | null;
+}) => {
+  const { data: schedules, error: schedulesLookupError } = await supabaseAdmin
+    .from("schedules")
+    .select("id")
+    .eq("user_id", userId);
+
+  if (schedulesLookupError) throw schedulesLookupError;
+
+  const scheduleIds = (schedules || []).map((schedule: { id: string }) => schedule.id);
+
+  if (scheduleIds.length > 0) {
+    const { error: weeklyHoursError } = await supabaseAdmin
+      .from("weekly_hours")
+      .delete()
+      .in("schedule_id", scheduleIds);
+    if (weeklyHoursError) throw weeklyHoursError;
+
+    const { error: dateOverridesError } = await supabaseAdmin
+      .from("date_overrides")
+      .delete()
+      .in("schedule_id", scheduleIds);
+    if (dateOverridesError) throw dateOverridesError;
+  }
+
+  const deleteSteps = [
+    supabaseAdmin.from("bookings").delete().eq("host_id", userId),
+    supabaseAdmin.from("event_types").delete().eq("user_id", userId),
+    supabaseAdmin.from("schedules").delete().eq("user_id", userId),
+    supabaseAdmin.from("profiles").delete().eq("id", userId),
+  ];
+
+  if (email) {
+    deleteSteps.push(
+      supabaseAdmin.from("verification_codes").delete().eq("email", email),
+    );
+  }
+
+  for (const step of deleteSteps) {
+    const { error } = await step;
+    if (error) throw error;
+  }
+};
+
+const isAuthUserMissing = async (supabaseAdmin: any, userId: string) => {
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  return Boolean(error || !data?.user);
+};
+
 const ensureProfileForUser = async ({
   supabaseAdmin,
   user,
@@ -57,6 +113,28 @@ const ensureProfileForUser = async ({
   const fullName =
     user.user_metadata?.full_name || user.user_metadata?.name || "";
   const email = user.email || user.user_metadata?.email || "";
+
+  if (!existingProfile && email) {
+    const { data: staleProfile, error: staleProfileError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email")
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (staleProfileError) throw staleProfileError;
+
+    if (
+      staleProfile?.id &&
+      staleProfile.id !== user.id &&
+      (await isAuthUserMissing(supabaseAdmin, staleProfile.id))
+    ) {
+      await deleteAppDataForUser({
+        supabaseAdmin,
+        userId: staleProfile.id,
+        email,
+      });
+    }
+  }
 
   if (existingProfile) {
     const updates: Record<string, string> = {};
@@ -270,6 +348,7 @@ export default async function handler(req: any, res: any) {
     await captureServerError(error, {
       route: "/api/auth/ensure-profile",
       stage: "unhandled",
+      message: getErrorMessage(error),
     });
 
     return sendJson(res, 500, { error: "Failed to ensure profile" });

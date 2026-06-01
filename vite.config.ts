@@ -6,8 +6,12 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const isVercelBuild = env.VERCEL === '1' || process.env.VERCEL === '1';
   const shouldUploadSourcemaps = Boolean(
-    env.SENTRY_AUTH_TOKEN && env.SENTRY_ORG && env.SENTRY_PROJECT,
+    isVercelBuild &&
+      env.SENTRY_AUTH_TOKEN &&
+      env.SENTRY_ORG &&
+      env.SENTRY_PROJECT,
   );
 
   return {

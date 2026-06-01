@@ -121,9 +121,9 @@ $ npm run clean
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret for Google Calendar / Gmail API | Yes |
 | `GOOGLE_REDIRECT_URI` | OAuth redirect URI (used by local server.ts) | No |
 | `SENTRY_DSN` | Sentry server project DSN for API error reporting | No |
-| `SENTRY_AUTH_TOKEN` | Sentry auth token used by Vite to upload production source maps | No |
-| `SENTRY_ORG` | Sentry organization slug used for source-map uploads | No |
-| `SENTRY_PROJECT` | Sentry project slug used for source-map uploads | No |
+| `SENTRY_AUTH_TOKEN` | Sentry auth token used by Vercel builds to upload production source maps | No |
+| `SENTRY_ORG` | Sentry organization slug used by Vercel source-map uploads | No |
+| `SENTRY_PROJECT` | Sentry project slug used by Vercel source-map uploads | No |
 | `PORT` | Local Express port (defaults to 3000) | No |
 | `NODE_ENV` | Enables Vite middleware in dev, serves dist in production | No |
 
