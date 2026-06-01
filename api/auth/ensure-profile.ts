@@ -91,6 +91,35 @@ const isAuthUserMissing = async (supabaseAdmin: any, userId: string) => {
   return Boolean(error || !data?.user);
 };
 
+const cleanupDeletedAuthProfilesByEmail = async ({
+  supabaseAdmin,
+  email,
+  currentUserId,
+}: {
+  supabaseAdmin: any;
+  email: string;
+  currentUserId: string;
+}) => {
+  const { data: matchingProfiles, error: matchingProfilesError } =
+    await supabaseAdmin
+      .from("profiles")
+      .select("id, email")
+      .ilike("email", email);
+
+  if (matchingProfilesError) throw matchingProfilesError;
+
+  for (const profile of matchingProfiles || []) {
+    if (!profile?.id || profile.id === currentUserId) continue;
+    if (!(await isAuthUserMissing(supabaseAdmin, profile.id))) continue;
+
+    await deleteAppDataForUser({
+      supabaseAdmin,
+      userId: profile.id,
+      email,
+    });
+  }
+};
+
 const ensureProfileForUser = async ({
   supabaseAdmin,
   user,
@@ -115,25 +144,11 @@ const ensureProfileForUser = async ({
   const email = user.email || user.user_metadata?.email || "";
 
   if (!existingProfile && email) {
-    const { data: staleProfile, error: staleProfileError } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email")
-      .ilike("email", email)
-      .maybeSingle();
-
-    if (staleProfileError) throw staleProfileError;
-
-    if (
-      staleProfile?.id &&
-      staleProfile.id !== user.id &&
-      (await isAuthUserMissing(supabaseAdmin, staleProfile.id))
-    ) {
-      await deleteAppDataForUser({
-        supabaseAdmin,
-        userId: staleProfile.id,
-        email,
-      });
-    }
+    await cleanupDeletedAuthProfilesByEmail({
+      supabaseAdmin,
+      email,
+      currentUserId: user.id,
+    });
   }
 
   if (existingProfile) {
@@ -178,6 +193,36 @@ const ensureProfileForUser = async ({
     ])
     .select()
     .single();
+
+  if (error && email) {
+    await cleanupDeletedAuthProfilesByEmail({
+      supabaseAdmin,
+      email,
+      currentUserId: user.id,
+    });
+
+    const retryResult = await supabaseAdmin
+      .from("profiles")
+      .insert([
+        {
+          id: user.id,
+          full_name: fullName,
+          email,
+          username: await getUniqueUsername(
+            supabaseAdmin,
+            buildBaseUsername(user),
+            user.id,
+          ),
+          google_access_token: googleAccessToken || null,
+          google_refresh_token: googleRefreshToken || null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (retryResult.error) throw retryResult.error;
+    return retryResult.data;
+  }
 
   if (error) throw error;
   return data;
