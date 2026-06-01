@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { captureServerError } from "../server/sentry";
+import { captureServerError } from "../server/sentry.js";
 
 type HostProfile = {
   id: string;

@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { captureServerError } from "../../server/sentry";
+import { captureServerError } from "../../server/sentry.js";
 
 const getBody = (body: unknown) => {
   if (typeof body === "string") {

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import { captureServerError } from "../../server/sentry";
+import { captureServerError } from "../../server/sentry.js";
 
 const getBody = (body: unknown) => {
   if (typeof body === "string") {

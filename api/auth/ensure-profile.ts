@@ -1,4 +1,4 @@
-import { captureServerError } from "../../server/sentry";
+import { captureServerError } from "../../server/sentry.js";
 
 const normalizeUsernameBase = (value?: string | null) => {
   const normalized = (value || "user").toLowerCase().replace(/[^a-z0-9]/g, "");

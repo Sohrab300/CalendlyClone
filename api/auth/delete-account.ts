@@ -1,4 +1,4 @@
-import { captureServerError } from "../../server/sentry";
+import { captureServerError } from "../../server/sentry.js";
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
