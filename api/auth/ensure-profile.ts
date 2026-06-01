@@ -355,7 +355,36 @@ const sendJson = (res: any, status: number, body: Record<string, unknown>) =>
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
+const getErrorDetails = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return { message: getErrorMessage(error) };
+  }
+
+  const typedError = error as {
+    code?: string;
+    details?: string;
+    hint?: string;
+    message?: string;
+    name?: string;
+    status?: number;
+  };
+
+  return {
+    code: typedError.code,
+    details: typedError.details,
+    hint: typedError.hint,
+    message: typedError.message || getErrorMessage(error),
+    name: typedError.name,
+    status: typedError.status,
+  };
+};
+
+const createRequestId = () =>
+  `ensure_profile_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
 export default async function handler(req: any, res: any) {
+  const requestId = createRequestId();
+
   try {
     if (req.method !== "POST") {
       return sendJson(res, 405, { error: "Method not allowed" });
@@ -401,15 +430,27 @@ export default async function handler(req: any, res: any) {
 
     return sendJson(res, 200, { success: true, profile });
   } catch (error) {
+    const stage = getErrorStage(error);
+    const errorDetails = getErrorDetails(error);
+
     console.error("[ensure-profile] Failed", {
-      error: getErrorMessage(error),
-    });
-    await captureServerError(error, {
-      route: "/api/auth/ensure-profile",
-      stage: getErrorStage(error),
-      message: getErrorMessage(error),
+      requestId,
+      stage,
+      error: errorDetails,
     });
 
-    return sendJson(res, 500, { error: "Failed to ensure profile" });
+    await captureServerError(error, {
+      route: "/api/auth/ensure-profile",
+      requestId,
+      stage,
+      message: getErrorMessage(error),
+      error: errorDetails,
+    });
+
+    return sendJson(res, 500, {
+      error: "Failed to ensure profile",
+      requestId,
+      stage,
+    });
   }
 }

@@ -24,6 +24,8 @@ export const ensureProfileForSession = async (
     captureAppError(error, {
       route: "/api/auth/ensure-profile",
       stage: "ensure_profile",
+      requestId: data?.requestId,
+      serverStage: data?.stage,
       status: response.status,
       userId: session.user.id,
     });
