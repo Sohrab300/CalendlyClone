@@ -26,14 +26,26 @@ const getUniqueUsername = async (
       .from("profiles")
       .select("id")
       .eq("username", username)
-      .maybeSingle();
+      .limit(1);
 
     if (error) throw error;
-    if (!data || data.id === userId) return username;
+    if (!data?.[0] || data[0].id === userId) return username;
   }
 
   return `${baseUsername}${Date.now()}`;
 };
+
+const setErrorStage = (error: unknown, stage: string) => {
+  if (error && typeof error === "object") {
+    (error as { devscheduleStage?: string }).devscheduleStage = stage;
+  }
+  return error;
+};
+
+const getErrorStage = (error: unknown) =>
+  error && typeof error === "object" && "devscheduleStage" in error
+    ? String((error as { devscheduleStage?: string }).devscheduleStage)
+    : "unhandled";
 
 const deleteAppDataForUser = async ({
   supabaseAdmin,
@@ -137,7 +149,7 @@ const ensureProfileForUser = async ({
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profileError) throw profileError;
+  if (profileError) throw setErrorStage(profileError, "profile_lookup");
 
   const fullName =
     user.user_metadata?.full_name || user.user_metadata?.name || "";
@@ -169,7 +181,7 @@ const ensureProfileForUser = async ({
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw setErrorStage(error, "profile_update");
     return data;
   }
 
@@ -220,11 +232,13 @@ const ensureProfileForUser = async ({
       .select()
       .single();
 
-    if (retryResult.error) throw retryResult.error;
+    if (retryResult.error) {
+      throw setErrorStage(retryResult.error, "profile_insert_retry");
+    }
     return retryResult.data;
   }
 
-  if (error) throw error;
+  if (error) throw setErrorStage(error, "profile_insert");
   return data;
 };
 
@@ -234,7 +248,7 @@ const ensureDefaultUserData = async (supabaseAdmin: any, userId: string) => {
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
 
-  if (countError) throw countError;
+  if (countError) throw setErrorStage(countError, "default_event_count");
   if (count && count > 0) return;
 
   const { data: existingSchedules, error: schedulesError } = await supabaseAdmin
@@ -243,7 +257,7 @@ const ensureDefaultUserData = async (supabaseAdmin: any, userId: string) => {
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
-  if (schedulesError) throw schedulesError;
+  if (schedulesError) throw setErrorStage(schedulesError, "default_schedule_lookup");
 
   let scheduleId = existingSchedules?.[0]?.id;
 
@@ -260,7 +274,7 @@ const ensureDefaultUserData = async (supabaseAdmin: any, userId: string) => {
       .select()
       .single();
 
-    if (scheduleError) throw scheduleError;
+    if (scheduleError) throw setErrorStage(scheduleError, "default_schedule_insert");
     scheduleId = schedule.id;
 
     const defaultWeeklyHours = [
@@ -302,7 +316,7 @@ const ensureDefaultUserData = async (supabaseAdmin: any, userId: string) => {
         })),
       );
 
-    if (weeklyError) throw weeklyError;
+    if (weeklyError) throw setErrorStage(weeklyError, "default_weekly_hours_insert");
   }
 
   const { error: eventError } = await supabaseAdmin.from("event_types").insert([
@@ -324,7 +338,7 @@ const ensureDefaultUserData = async (supabaseAdmin: any, userId: string) => {
     },
   ]);
 
-  if (eventError) throw eventError;
+  if (eventError) throw setErrorStage(eventError, "default_event_insert");
 };
 
 const getBody = (body: unknown) => {
@@ -392,7 +406,7 @@ export default async function handler(req: any, res: any) {
     });
     await captureServerError(error, {
       route: "/api/auth/ensure-profile",
-      stage: "unhandled",
+      stage: getErrorStage(error),
       message: getErrorMessage(error),
     });
 
