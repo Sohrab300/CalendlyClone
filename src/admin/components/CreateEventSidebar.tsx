@@ -442,6 +442,7 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
   const [isDateRangeExpanded, setIsDateRangeExpanded] = React.useState(false);
   const [isDateRangeTypeDropdownOpen, setIsDateRangeTypeDropdownOpen] =
     React.useState(false);
+  const [isBelowMd, setIsBelowMd] = React.useState(false);
   const [isNoticeDropdownOpen, setIsNoticeDropdownOpen] = React.useState(false);
   const [isFixedDatePickerOpen, setIsFixedDatePickerOpen] =
     React.useState(false);
@@ -454,7 +455,27 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
   const datePickerRef = React.useRef<HTMLDivElement>(null);
   const datePickerTriggerRef = React.useRef<HTMLButtonElement>(null);
 
+  React.useEffect(() => {
+    const handleResize = () => setIsBelowMd(window.innerWidth < 768);
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const updateDatePickerPosition = React.useCallback(() => {
+    if (window.innerWidth < 768) {
+      setDatePickerPosition({
+        top: Math.max(
+          16,
+          Math.round((window.innerHeight - DATE_RANGE_PICKER_HEIGHT) / 2),
+        ),
+        left: 16,
+      });
+      return;
+    }
+
     const trigger = datePickerTriggerRef.current;
     if (!trigger) return;
 
@@ -1245,64 +1266,113 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                                           </button>
                                           <AnimatePresence>
                                             {isDateRangeTypeDropdownOpen && (
-                                              <motion.div
-                                                initial={{ opacity: 0, y: 5 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: 5 }}
-                                                className="absolute top-full right-0 mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-1"
-                                              >
-                                                <button
-                                                  onClick={() => {
-                                                    setDateRangeType(
-                                                      "calendar_days",
-                                                    );
-                                                    setIsDateRangeTypeDropdownOpen(
-                                                      false,
-                                                    );
-                                                  }}
-                                                  className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors group"
+                                              <>
+                                                {isBelowMd && (
+                                                  <motion.button
+                                                    type="button"
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    exit={{ opacity: 0 }}
+                                                    onClick={() =>
+                                                      setIsDateRangeTypeDropdownOpen(
+                                                        false,
+                                                      )
+                                                    }
+                                                    className="fixed inset-0 z-[160] bg-slate-950/30"
+                                                    aria-label="Close date range type options"
+                                                  />
+                                                )}
+                                                <motion.div
+                                                  initial={
+                                                    isBelowMd
+                                                      ? {
+                                                          opacity: 0,
+                                                          scale: 0.98,
+                                                          x: "-50%",
+                                                          y: "-50%",
+                                                        }
+                                                      : { opacity: 0, y: 5 }
+                                                  }
+                                                  animate={
+                                                    isBelowMd
+                                                      ? {
+                                                          opacity: 1,
+                                                          scale: 1,
+                                                          x: "-50%",
+                                                          y: "-50%",
+                                                        }
+                                                      : { opacity: 1, y: 0 }
+                                                  }
+                                                  exit={
+                                                    isBelowMd
+                                                      ? {
+                                                          opacity: 0,
+                                                          scale: 0.98,
+                                                          x: "-50%",
+                                                          y: "-50%",
+                                                        }
+                                                      : { opacity: 0, y: 5 }
+                                                  }
+                                                  className={cn(
+                                                    "bg-white rounded-lg shadow-xl py-1 border border-slate-200",
+                                                    isBelowMd
+                                                      ? "fixed left-1/2 top-1/2 z-[170] w-[calc(100vw-32px)] max-w-72"
+                                                      : "absolute top-full right-0 mt-1 z-50 w-72",
+                                                  )}
                                                 >
-                                                  <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-bold text-slate-900">
-                                                      calendar days
-                                                    </span>
-                                                    {dateRangeType ===
-                                                      "calendar_days" && (
-                                                      <div className="w-2 h-3.5 border-b-2 border-r-2 border-blue-600 rotate-45 mb-1" />
-                                                    )}
-                                                  </div>
-                                                  <p className="text-xs text-slate-500 mt-1">
-                                                    Counts every day on the
-                                                    calendar including days
-                                                    you're unavailable
-                                                  </p>
-                                                </button>
-                                                <button
-                                                  onClick={() => {
-                                                    setDateRangeType(
-                                                      "weekdays",
-                                                    );
-                                                    setIsDateRangeTypeDropdownOpen(
-                                                      false,
-                                                    );
-                                                  }}
-                                                  className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors group"
-                                                >
-                                                  <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-bold text-slate-900">
-                                                      weekdays
-                                                    </span>
-                                                    {dateRangeType ===
-                                                      "weekdays" && (
-                                                      <div className="w-2 h-3.5 border-b-2 border-r-2 border-blue-600 rotate-45 mb-1" />
-                                                    )}
-                                                  </div>
-                                                  <p className="text-xs text-slate-500 mt-1">
-                                                    Excludes weekends and only
-                                                    counts Mon - Fri
-                                                  </p>
-                                                </button>
-                                              </motion.div>
+                                                  <button
+                                                    onClick={() => {
+                                                      setDateRangeType(
+                                                        "calendar_days",
+                                                      );
+                                                      setIsDateRangeTypeDropdownOpen(
+                                                        false,
+                                                      );
+                                                    }}
+                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors group"
+                                                  >
+                                                    <div className="flex items-center justify-between">
+                                                      <span className="text-sm font-bold text-slate-900">
+                                                        calendar days
+                                                      </span>
+                                                      {dateRangeType ===
+                                                        "calendar_days" && (
+                                                        <div className="w-2 h-3.5 border-b-2 border-r-2 border-blue-600 rotate-45 mb-1" />
+                                                      )}
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-1">
+                                                      Counts every day on the
+                                                      calendar including days
+                                                      you're unavailable
+                                                    </p>
+                                                  </button>
+                                                  <button
+                                                    onClick={() => {
+                                                      setDateRangeType(
+                                                        "weekdays",
+                                                      );
+                                                      setIsDateRangeTypeDropdownOpen(
+                                                        false,
+                                                      );
+                                                    }}
+                                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors group"
+                                                  >
+                                                    <div className="flex items-center justify-between">
+                                                      <span className="text-sm font-bold text-slate-900">
+                                                        weekdays
+                                                      </span>
+                                                      {dateRangeType ===
+                                                        "weekdays" && (
+                                                        <div className="w-2 h-3.5 border-b-2 border-r-2 border-blue-600 rotate-45 mb-1" />
+                                                      )}
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-1">
+                                                      Excludes weekends and only
+                                                      counts Mon - Fri
+                                                    </p>
+                                                  </button>
+                                                </motion.div>
+                                              </>
                                             )}
                                           </AnimatePresence>
                                         </div>
@@ -1343,7 +1413,7 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                                                 )
                                               }
                                               className={cn(
-                                                "h-10 px-4 border rounded-lg flex items-center gap-2 text-sm transition-all bg-white min-w-[220px]",
+                                                "h-10 px-4 border rounded-lg flex items-center gap-2 text-sm transition-all bg-white min-w-[175px]",
                                                 isFixedDatePickerOpen
                                                   ? "border-blue-600 ring-4 ring-blue-50"
                                                   : "border-slate-200 hover:border-slate-300",
@@ -4026,9 +4096,8 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
             style={{
               top: datePickerPosition.top,
               left: datePickerPosition.left,
-              width: DATE_RANGE_PICKER_WIDTH,
             }}
-            className="fixed bg-white border border-[#c8d8ea] rounded-lg shadow-2xl z-[120] px-6 py-5 flex flex-col justify-between"
+            className="fixed z-[180] max-h-[calc(100vh-32px)] w-[calc(100vw-32px)] overflow-y-auto rounded-lg border border-[#c8d8ea] bg-white px-4 py-5 shadow-2xl md:w-[640px] md:px-6 flex flex-col justify-between"
           >
             <button
               type="button"
@@ -4051,9 +4120,11 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
               <ChevronRight className="w-5 h-5" />
             </button>
 
-            <div className="flex gap-8 mb-6">
+            <div className="flex flex-col gap-8 mb-6 md:flex-row">
               {renderCalendar(viewDate)}
-              {renderCalendar(addMonths(viewDate, 1))}
+              <div className="hidden w-full md:block">
+                {renderCalendar(addMonths(viewDate, 1))}
+              </div>
             </div>
 
             <div className="flex items-center justify-center gap-8 mt-2">
