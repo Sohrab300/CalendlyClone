@@ -7,7 +7,8 @@ const normalizeUsernameBase = (value?: string | null) => {
 
 const buildBaseUsername = (user: any) =>
   normalizeUsernameBase(
-    user.user_metadata?.preferred_username ||
+    user.user_metadata?.username ||
+      user.user_metadata?.preferred_username ||
       user.user_metadata?.name ||
       user.email?.split("@")[0] ||
       user.id,

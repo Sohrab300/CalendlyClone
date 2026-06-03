@@ -27,7 +27,8 @@ const normalizeUsernameBase = (value?: string | null) => {
 
 const buildBaseUsername = (user: any) =>
   normalizeUsernameBase(
-    user.user_metadata?.preferred_username ||
+    user.user_metadata?.username ||
+      user.user_metadata?.preferred_username ||
       user.user_metadata?.name ||
       user.email?.split("@")[0] ||
       user.id,
@@ -902,19 +903,105 @@ async function startServer() {
   });
 
   app.post("/api/auth/verify-signup-otp", async (req, res) => {
-    const { email, code } = req.body;
+    const email = req.body?.email?.trim().toLowerCase();
+    const { code } = req.body;
     if (!email || !code)
       return res.status(400).json({ error: "Email and code are required" });
 
     try {
       await verifyOtp(supabaseAdmin, email, code);
-      res.json({ success: true });
+      const verificationToken = randomBytes(32).toString("hex");
+      const verifiedUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const { error } = await supabaseAdmin.from("verification_codes").insert([
+        {
+          email,
+          code: `signup_verified:${verificationToken}`,
+          expires_at: verifiedUntil,
+        },
+      ]);
+
+      if (error) {
+        console.error("Error storing signup verification token:", error);
+        return res.status(500).json({ error: "Verification failed" });
+      }
+
+      res.json({ success: true, verificationToken });
     } catch (err) {
       console.error("Verification error:", err);
       if (err instanceof OtpServiceError) {
         return res.status(err.statusCode).json({ error: err.message });
       }
       res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
+  app.post("/api/auth/confirm-signup-email", async (req, res) => {
+    const email = req.body?.email?.trim().toLowerCase();
+    const userId = req.body?.userId?.trim();
+    const verificationToken = req.body?.verificationToken?.trim();
+
+    if (!email || !userId || !verificationToken) {
+      return res.status(400).json({
+        error: "Email, user, and verification token are required",
+      });
+    }
+
+    try {
+      const { data: verification, error: verificationError } =
+        await supabaseAdmin
+          .from("verification_codes")
+          .select("*")
+          .eq("email", email)
+          .eq("code", `signup_verified:${verificationToken}`)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+      if (verificationError || !verification) {
+        return res.status(400).json({ error: "Invalid signup verification" });
+      }
+
+      if (new Date() > new Date(verification.expires_at)) {
+        await supabaseAdmin
+          .from("verification_codes")
+          .delete()
+          .eq("email", email)
+          .eq("code", `signup_verified:${verificationToken}`);
+
+        return res.status(400).json({ error: "Signup verification expired" });
+      }
+
+      const { data: userData, error: userError } =
+        await supabaseAdmin.auth.admin.getUserById(userId);
+
+      if (userError || !userData.user) {
+        return res.status(404).json({ error: "Signup user not found" });
+      }
+
+      if (userData.user.email?.toLowerCase() !== email) {
+        return res.status(403).json({ error: "Signup verification mismatch" });
+      }
+
+      const { error: confirmError } =
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          email_confirm: true,
+        });
+
+      if (confirmError) {
+        console.error("Error confirming signup email:", confirmError);
+        return res.status(500).json({ error: "Signup confirmation failed" });
+      }
+
+      await supabaseAdmin
+        .from("verification_codes")
+        .delete()
+        .eq("email", email)
+        .eq("code", `signup_verified:${verificationToken}`);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error confirming signup email:", error);
+      res.status(500).json({ error: "Signup confirmation failed" });
     }
   });
 

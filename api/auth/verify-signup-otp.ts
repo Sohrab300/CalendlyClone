@@ -1,4 +1,5 @@
 import { captureServerError } from "../../server/sentry.js";
+import { randomBytes } from "node:crypto";
 
 const getBody = (body: unknown) => {
   if (typeof body === "string") {
@@ -83,7 +84,33 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    return sendJson(res, 200, { success: true });
+    const verificationToken = randomBytes(32).toString("hex");
+    const verifiedUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const verifiedInsertResult = await supabaseAdmin
+      .from("verification_codes")
+      .insert([
+        {
+          email,
+          code: `signup_verified:${verificationToken}`,
+          expires_at: verifiedUntil,
+        },
+      ]);
+
+    if (verifiedInsertResult.error) {
+      await captureServerError(verifiedInsertResult.error, {
+        route: "/api/auth/verify-signup-otp",
+        stage: "insert_verified_signup_token",
+        email,
+      });
+      return sendJson(res, 500, {
+        error: "Verification failed",
+      });
+    }
+
+    return sendJson(res, 200, {
+      success: true,
+      verificationToken,
+    });
   } catch (error) {
     await captureServerError(error, {
       route: "/api/auth/verify-signup-otp",

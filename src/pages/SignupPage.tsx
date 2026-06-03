@@ -54,6 +54,7 @@ export default function SignupPage() {
   >("idle");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [signupVerificationToken, setSignupVerificationToken] = useState("");
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -200,6 +201,7 @@ export default function SignupPage() {
       const data = await readApiResponse(response);
       if (response.ok) {
         toast.success("OTP sent to your email");
+        setSignupVerificationToken("");
         setStep(2);
       } else {
         captureAppError(new Error(data.error || "Failed to send OTP"), {
@@ -237,6 +239,7 @@ export default function SignupPage() {
 
       const data = await readApiResponse(response);
       if (response.ok) {
+        setSignupVerificationToken(data.verificationToken || "");
         setStep(3);
       } else {
         captureAppError(new Error(data.error || "Invalid or expired OTP"), {
@@ -340,15 +343,67 @@ export default function SignupPage() {
       }
 
       if (authData.user) {
-        const { data: { session } } = await supabase.auth.getSession();
+        let { data: { session } } = await supabase.auth.getSession();
+        let signupUser = authData.user;
 
         if (!session) {
-          toast.error("Your account was created, but we could not start your session. Please log in.");
-          return;
+          if (!signupVerificationToken) {
+            toast.error("Your account was created, but we could not start your session. Please log in.");
+            return;
+          }
+
+          const confirmResponse = await fetch("/api/auth/confirm-signup-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              userId: authData.user.id,
+              verificationToken: signupVerificationToken,
+            }),
+          });
+          const confirmData = await readApiResponse(confirmResponse);
+
+          if (!confirmResponse.ok) {
+            captureAppError(
+              new Error(confirmData.error || "Failed to confirm signup email"),
+              {
+                route: "/signup",
+                stage: "confirm_signup_email",
+                status: confirmResponse.status,
+                email,
+                userId: authData.user.id,
+              },
+            );
+            toast.error("Your account was created, but we could not start your session. Please log in.");
+            return;
+          }
+
+          const { data: signInData, error: signInError } =
+            await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+          if (signInError || !signInData.session) {
+            captureAppError(
+              signInError || new Error("Missing session after confirmed signup"),
+              {
+                route: "/signup",
+                stage: "manual_signup_sign_in",
+                email,
+                userId: authData.user.id,
+              },
+            );
+            toast.error("Your account was created, but we could not start your session. Please log in.");
+            return;
+          }
+
+          session = signInData.session;
+          signupUser = signInData.user || authData.user;
         }
 
         setStep(4);
-        startAccountSetup(session, authData.user).catch(() => {
+        startAccountSetup(session, signupUser).catch(() => {
           toast.error("We could not finish setting up your profile. Please try again.");
         });
       }
