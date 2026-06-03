@@ -26,7 +26,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
 }) => {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(false);
   const handleLogout = useAdminLogout();
+  const isEffectivelyCollapsed = !isMobile && isCollapsed;
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const handleChange = () => {
+      setIsMobile(mediaQuery.matches);
+      if (mediaQuery.matches) setIsCollapsed(false);
+    };
+
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   const menuItems = [
     { icon: LinkIcon, label: "Scheduling" },
@@ -39,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <div
       className={cn(
         "h-screen shrink-0 bg-white border-r border-slate-200 flex flex-col transition-all duration-300 relative",
-        isCollapsed ? "w-20" : "w-64",
+        isEffectivelyCollapsed ? "w-20" : "w-64",
       )}
     >
       <div className="p-6 flex items-center justify-between">
@@ -47,13 +61,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={() => onTabChange("Scheduling")}
           className="flex items-center gap-2 cursor-pointer group"
         >
-          <BrandLogo compact={isCollapsed} iconClassName="h-8 w-8 group-hover:scale-105 transition-transform" />
+          <BrandLogo
+            compact={isEffectivelyCollapsed}
+            iconClassName="h-8 w-8 group-hover:scale-105 transition-transform"
+          />
         </div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`p-1 hover:bg-slate-100 rounded-lg transition-colors`}
+          className="hidden p-1 hover:bg-slate-100 rounded-lg transition-colors md:block"
         >
-          {isCollapsed ? (
+          {isEffectivelyCollapsed ? (
             <ChevronRight className="w-4 h-4" />
           ) : (
             <ChevronLeft className="w-4 h-4" />
@@ -66,11 +83,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={onCreateClick}
           className={cn(
             "w-full flex items-center justify-center text-[14px] gap-2 py-2 rounded-full hover:bg-blue-50 transition-al border border-black",
-            isCollapsed ? "px-0" : "px-4",
+            isEffectivelyCollapsed ? "px-0" : "px-4",
           )}
         >
           <Plus className="w-5 h-5" />
-          {!isCollapsed && (
+          {!isEffectivelyCollapsed && (
             <>
               <span>Create</span>
             </>
@@ -91,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           >
             <item.icon className="w-5 h-5 shrink-0" />
-            {!isCollapsed && <span>{item.label}</span>}
+            {!isEffectivelyCollapsed && <span>{item.label}</span>}
           </button>
         ))}
       </nav>
@@ -102,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
         >
           <LogOut className="w-5 h-5 shrink-0 text-slate-400" />
-          {!isCollapsed && <span>Logout</span>}
+          {!isEffectivelyCollapsed && <span>Logout</span>}
         </button>
       </div>
     </div>

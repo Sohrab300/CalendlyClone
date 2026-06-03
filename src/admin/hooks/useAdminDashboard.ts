@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { MOCK_EVENTS } from '../../constants';
 import { supabase } from '../../lib/supabase';
 import { captureAppError } from '../../lib/sentry';
-import { availabilityService, EventType } from '../../services/availabilityService';
+import { availabilityService, DayAvailability, EventType } from '../../services/availabilityService';
 import { ensureProfileForSession } from '../../services/profileService';
 import { AdminProfile, EventFormData, ScheduleOption, SettingsTab } from '../types';
 
@@ -47,6 +47,7 @@ export function useAdminDashboard() {
   const [editingEvent, setEditingEvent] = React.useState<EventType | null>(null);
   const [events, setEvents] = React.useState<EventType[]>([]);
   const [schedules, setSchedules] = React.useState<ScheduleOption[]>([]);
+  const [weeklyHoursByScheduleId, setWeeklyHoursByScheduleId] = React.useState<Record<string, DayAvailability[]>>({});
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [profile, setProfile] = React.useState<AdminProfile | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -79,6 +80,13 @@ export function useAdminDashboard() {
 
       setEvents(eventsData);
       setSchedules(schedulesData || []);
+      const weeklyHoursEntries = await Promise.all(
+        (schedulesData || []).map(async (schedule) => [
+          schedule.id,
+          await availabilityService.getWeeklyHours(schedule.id),
+        ] as const),
+      );
+      setWeeklyHoursByScheduleId(Object.fromEntries(weeklyHoursEntries));
     } catch (error) {
       console.error('Error loading data:', error);
       captureAppError(error, {
@@ -294,5 +302,6 @@ export function useAdminDashboard() {
     sidebarTab,
     targetScheduleId,
     toggleSelection,
+    weeklyHoursByScheduleId,
   };
 }

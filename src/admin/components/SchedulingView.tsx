@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   AlertCircle,
   Copy,
@@ -7,21 +7,24 @@ import {
   MoreHorizontal,
   Plus,
   Search,
-} from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { EventType } from '../../services/availabilityService';
-import { AdminProfile } from '../types';
+} from "lucide-react";
+import { cn } from "../../lib/utils";
+import { DayAvailability, EventType } from "../../services/availabilityService";
+import { AdminProfile, ScheduleOption } from "../types";
 
-const TABS = ['Event types', 'Single-use links', 'Meeting polls'];
+const TABS = ["Event types"]; //, 'Single-use links', 'Meeting polls'
 
 interface SchedulingViewProps {
   activeTab: string;
+  editingEvent: EventType | null;
   events: EventType[];
   isSidebarOpen: boolean;
   newEventColor: string;
   newEventName: string;
   profile: AdminProfile | null;
+  schedules: ScheduleOption[];
   selectedIds: Set<string>;
+  weeklyHoursByScheduleId: Record<string, DayAvailability[]>;
   onCopyLink: (event: EventType) => void;
   onCreateClick: () => void;
   onEditEvent: (event: EventType) => void;
@@ -32,12 +35,15 @@ interface SchedulingViewProps {
 
 export const SchedulingView: React.FC<SchedulingViewProps> = ({
   activeTab,
+  editingEvent,
   events,
   isSidebarOpen,
   newEventColor,
   newEventName,
   profile,
+  schedules,
   selectedIds,
+  weeklyHoursByScheduleId,
   onCopyLink,
   onCreateClick,
   onEditEvent,
@@ -45,23 +51,44 @@ export const SchedulingView: React.FC<SchedulingViewProps> = ({
   onToggleSelection,
   onViewLandingPage,
 }) => (
-  <div className="max-w-5xl mx-auto">
+  <div className="w-full md:max-w-5xl md:mx-auto">
     <SchedulingHeader onCreateClick={onCreateClick} />
     <SchedulingTabs activeTab={activeTab} onTabChange={onTabChange} />
     <EventTypeSearch />
 
     <div className="space-y-6">
-      <ProfileEventTypeHeader profile={profile} onViewLandingPage={onViewLandingPage} />
+      <ProfileEventTypeHeader
+        profile={profile}
+        onViewLandingPage={onViewLandingPage}
+      />
 
-      {isSidebarOpen && (
-        <DraftEventCard color={newEventColor} name={newEventName} />
+      {isSidebarOpen && !editingEvent && (
+        <DraftEventCard
+          color={newEventColor}
+          name={newEventName}
+          scheduleSummary={getDefaultScheduleSummary(
+            schedules,
+            weeklyHoursByScheduleId,
+          )}
+        />
       )}
 
-      {events.map(event => (
+      {events.map((event) => (
         <EventTypeCard
           key={event.id}
           event={event}
           isSelected={selectedIds.has(event.id)}
+          previewColor={
+            editingEvent?.id === event.id ? newEventColor : undefined
+          }
+          previewTitle={
+            editingEvent?.id === event.id ? newEventName : undefined
+          }
+          scheduleSummary={getEventScheduleSummary(
+            event,
+            schedules,
+            weeklyHoursByScheduleId,
+          )}
           onCopyLink={onCopyLink}
           onEditEvent={onEditEvent}
           onToggleSelection={onToggleSelection}
@@ -71,21 +98,134 @@ export const SchedulingView: React.FC<SchedulingViewProps> = ({
   </div>
 );
 
-const SchedulingHeader: React.FC<{ onCreateClick: () => void }> = ({ onCreateClick }) => (
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const normalizeTimeToMinutes = (value: string) => {
+  const match = value
+    .trim()
+    .toLowerCase()
+    .match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/);
+  if (!match) return null;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3];
+
+  if (meridiem === "pm" && hours !== 12) hours += 12;
+  if (meridiem === "am" && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+};
+
+const formatMinutes = (value: number) => {
+  const rounded = Math.round(value / 5) * 5;
+  const hours24 = Math.floor(rounded / 60) % 24;
+  const minutes = rounded % 60;
+  const meridiem = hours24 >= 12 ? "pm" : "am";
+  const hours12 = hours24 % 12 || 12;
+
+  return minutes === 0
+    ? `${hours12} ${meridiem}`
+    : `${hours12}:${minutes.toString().padStart(2, "0")} ${meridiem}`;
+};
+
+const summarizeDays = (days: number[]) => {
+  const uniqueDays = [...new Set(days)].sort((a, b) => a - b);
+  const key = uniqueDays.join(",");
+
+  if (key === "1,2,3,4,5") return "Weekdays";
+  if (key === "0,6") return "Weekends";
+  if (key === "0,1,2,3,4,5,6") return "Every day";
+
+  return uniqueDays.map((day) => DAY_LABELS[day]).join(", ");
+};
+
+const summarizeWeeklyHours = (weeklyHours?: DayAvailability[] | null) => {
+  const slots = (weeklyHours || []).flatMap((day) =>
+    day.enabled
+      ? (day.slots || []).map((slot) => ({
+          dayIndex: day.day_index,
+          start: normalizeTimeToMinutes(slot.start),
+          end: normalizeTimeToMinutes(slot.end),
+        }))
+      : [],
+  );
+  const validSlots = slots.filter(
+    (slot): slot is { dayIndex: number; start: number; end: number } =>
+      slot.start !== null && slot.end !== null,
+  );
+
+  if (validSlots.length === 0) return "No availability set";
+
+  const averageStart =
+    validSlots.reduce((total, slot) => total + slot.start, 0) /
+    validSlots.length;
+  const averageEnd =
+    validSlots.reduce((total, slot) => total + slot.end, 0) / validSlots.length;
+
+  return `${summarizeDays(validSlots.map((slot) => slot.dayIndex))}, ${formatMinutes(
+    averageStart,
+  )} - ${formatMinutes(averageEnd)}`;
+};
+
+const getDefaultScheduleSummary = (
+  schedules: ScheduleOption[],
+  weeklyHoursByScheduleId: Record<string, DayAvailability[]>,
+) => {
+  const schedule = schedules.find((item) => item.is_active) || schedules[0];
+  return summarizeWeeklyHours(
+    schedule ? weeklyHoursByScheduleId[schedule.id] : null,
+  );
+};
+
+const getEventScheduleSummary = (
+  event: EventType,
+  schedules: ScheduleOption[],
+  weeklyHoursByScheduleId: Record<string, DayAvailability[]>,
+) => {
+  if (event.use_custom_schedule) {
+    return summarizeWeeklyHours(
+      event.custom_weekly_hours as DayAvailability[] | null,
+    );
+  }
+
+  const schedule =
+    schedules.find((item) => item.id === event.schedule_id) ||
+    schedules.find((item) => item.is_active) ||
+    schedules[0];
+
+  return summarizeWeeklyHours(
+    schedule ? weeklyHoursByScheduleId[schedule.id] : null,
+  );
+};
+
+const SchedulingHeader: React.FC<{ onCreateClick: () => void }> = ({
+  onCreateClick,
+}) => (
   <div className="flex items-center justify-between mb-8">
     <div className="flex items-center gap-2">
       <h1 className="text-2xl font-bold">Scheduling</h1>
-      <HelpCircle className="w-5 h-5 text-slate-400 cursor-pointer" />
+      <HelpCircle className="w-4 h-5 md:w-5 md:h-5 text-slate-400 cursor-pointer" />
     </div>
     <button
       onClick={onCreateClick}
-      className="bg-blue-600 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-blue-700 transition-colors"
+      className="bg-blue-600 text-white max-md:text-sm px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-blue-700 transition-colors"
     >
-      <Plus className="w-5 h-5" />
+      <Plus className="w-4 h-5 md:w-5 md:h-5" />
       <span>Create</span>
       <span className="border-l border-white/30 pl-2 ml-1">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        <svg
+          className="w-3 h-3 md:w-4 md:h-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </span>
     </button>
@@ -98,13 +238,15 @@ const SchedulingTabs: React.FC<{
 }> = ({ activeTab, onTabChange }) => (
   <div className="border-b border-slate-200 mb-6">
     <div className="flex gap-8">
-      {TABS.map(tab => (
+      {TABS.map((tab) => (
         <button
           key={tab}
           onClick={() => onTabChange(tab)}
           className={cn(
-            'pb-4 text-sm font-bold transition-all relative',
-            activeTab === tab ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+            "pb-4 text-sm font-bold transition-all relative",
+            activeTab === tab
+              ? "text-blue-600"
+              : "text-slate-500 hover:text-slate-800",
           )}
         >
           {tab}
@@ -145,10 +287,12 @@ const ProfileEventTypeHeader: React.FC<{
             referrerPolicy="no-referrer"
           />
         ) : (
-          (profile?.full_name?.[0] || 'S').toUpperCase()
+          (profile?.full_name?.[0] || "S").toUpperCase()
         )}
       </div>
-      <span className="font-bold text-slate-800">{profile?.full_name || 'Sohrab sheikh'}</span>
+      <span className="font-bold text-slate-800">
+        {profile?.full_name || "Sohrab sheikh"}
+      </span>
     </div>
     <div className="flex items-center gap-4">
       <button
@@ -164,7 +308,11 @@ const ProfileEventTypeHeader: React.FC<{
   </div>
 );
 
-const DraftEventCard: React.FC<{ color: string; name: string }> = ({ color, name }) => (
+const DraftEventCard: React.FC<{
+  color: string;
+  name: string;
+  scheduleSummary: string;
+}> = ({ color, name, scheduleSummary }) => (
   <div className="bg-blue-50/50 border border-blue-200 rounded-lg shadow-sm overflow-hidden flex animate-in fade-in slide-in-from-top-2 duration-300">
     <div className="w-2" style={{ backgroundColor: color }} />
     <div className="flex-1 p-6">
@@ -181,7 +329,7 @@ const DraftEventCard: React.FC<{ color: string; name: string }> = ({ color, name
               <AlertCircle className="w-4 h-4 text-orange-500 fill-orange-500 text-white" />
               <span>30 min • No location set • One-on-One</span>
             </div>
-            <p className="text-sm text-slate-500">Weekdays, 9 am - 5 pm</p>
+            <p className="text-sm text-slate-500">{scheduleSummary}</p>
           </div>
         </div>
       </div>
@@ -192,56 +340,80 @@ const DraftEventCard: React.FC<{ color: string; name: string }> = ({ color, name
 const EventTypeCard: React.FC<{
   event: EventType;
   isSelected: boolean;
+  previewColor?: string;
+  previewTitle?: string;
+  scheduleSummary: string;
   onCopyLink: (event: EventType) => void;
   onEditEvent: (event: EventType) => void;
   onToggleSelection: (id: string) => void;
-}> = ({ event, isSelected, onCopyLink, onEditEvent, onToggleSelection }) => (
-  <div
-    onClick={() => onEditEvent(event)}
-    className={cn(
-      'bg-white border rounded-lg shadow-sm overflow-hidden flex hover:shadow-md transition-all cursor-pointer group',
-      isSelected ? 'border-blue-600 bg-blue-50/30' : 'border-slate-200'
-    )}
-  >
+}> = ({
+  event,
+  isSelected,
+  previewColor,
+  previewTitle,
+  scheduleSummary,
+  onCopyLink,
+  onEditEvent,
+  onToggleSelection,
+}) => {
+  const displayColor = previewColor || event.color;
+  const displayTitle = previewTitle || event.title;
+
+  return (
     <div
-      className={cn('w-2', !event.color.startsWith('bg-[') && event.color)}
-      style={{ backgroundColor: event.color.startsWith('bg-[') ? event.color.slice(4, -1) : undefined }}
-    />
-    <div className="flex-1 p-6">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={(e) => {
-              e.stopPropagation();
-              onToggleSelection(event.id);
-            }}
-            className="mt-1.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
-              {event.title}
-            </h3>
-            <p className="text-sm text-slate-500 mb-1">
-              {event.duration} min • {event.location} • {event.type}
-            </p>
-            <p className="text-sm text-slate-500">Weekdays, 9 am - 5 pm</p>
+      onClick={() => onEditEvent(event)}
+      className={cn(
+        "bg-white border rounded-lg shadow-sm overflow-hidden flex hover:shadow-md transition-all cursor-pointer group",
+        isSelected ? "border-blue-600 bg-blue-50/30" : "border-slate-200",
+      )}
+    >
+      <div
+        className={cn("w-2", !displayColor.startsWith("bg-[") && displayColor)}
+        style={{
+          backgroundColor: displayColor.startsWith("bg-[")
+            ? displayColor.slice(4, -1)
+            : undefined,
+        }}
+      />
+      <div className="flex-1 p-4 md:p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-4">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleSelection(event.id);
+              }}
+              className="mt-1.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
+                {displayTitle}
+              </h3>
+              <p className="text-[12px] md:text-sm text-slate-500 mb-1">
+                {event.duration} min • {event.location} • {event.type}
+              </p>
+              <p className="text-sm text-slate-500">{scheduleSummary}</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => onCopyLink(event)}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-full text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+          <div
+            className="flex items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Copy className="w-4 h-4" />
-            Copy link
-          </button>
-          <div className="w-px h-6 bg-slate-200" />
-          <MoreHorizontal className="w-5 h-5 text-slate-400 cursor-pointer hover:text-slate-600" />
+            <button
+              onClick={() => onCopyLink(event)}
+              className="flex items-center gap-2 px-2 py-1 md:px-4 md:py-2 border border-slate-200 rounded-full text-[12px] md:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <Copy className="w-4 h-4" />
+              Copy link
+            </button>
+            <div className="w-px h-6 bg-slate-200" />
+            <MoreHorizontal className="w-5 h-5 text-slate-400 cursor-pointer hover:text-slate-600" />
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};

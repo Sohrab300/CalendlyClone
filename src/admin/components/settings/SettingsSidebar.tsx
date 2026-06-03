@@ -30,7 +30,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ activeTab, onB
   const handleLogout = useAdminLogout();
 
   return (
-    <div className="w-[280px] border-r border-[#f1f5f9] flex flex-col p-6 overflow-y-auto bg-white shrink-0">
+    <div className="h-screen w-[280px] border-r border-[#f1f5f9] flex flex-col p-6 overflow-y-auto bg-white shrink-0">
       <div onClick={onBack} className="flex items-center gap-2 mb-8 cursor-pointer group">
         <BrandLogo iconClassName="h-8 w-8 transition-transform group-hover:scale-105" />
       </div>

@@ -17,6 +17,7 @@ export const SettingsView: React.FC<{
 }> = ({ onBack, onProfileUpdate, initialTab = "Profile" }) => {
   const [activeTab, setActiveTab] = React.useState(initialTab);
   const [securitySubTab, setSecuritySubTab] = React.useState("Booking");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const settings = useSettings(onProfileUpdate);
   const contentWidthClass =
     activeTab === "Security" ? "max-w-[1280px]" : "max-w-[670px]";
@@ -35,17 +36,23 @@ export const SettingsView: React.FC<{
         <SettingsSidebar
           activeTab={activeTab}
           onBack={onBack}
-          onTabChange={setActiveTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setIsMobileSidebarOpen(false);
+          }}
         />
       }
       header={
         <Header
           variant="settings"
           profile={settings.profile}
+          onOpenSidebar={() => setIsMobileSidebarOpen(true)}
           onNavigateToSettings={(tab = "Profile") => setActiveTab(tab)}
         />
       }
+      isMobileSidebarOpen={isMobileSidebarOpen}
       mainClassName="bg-white animate-in fade-in duration-500"
+      onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
     >
       <div className="w-full">
         <div className="px-11 pt-0 pb-7">

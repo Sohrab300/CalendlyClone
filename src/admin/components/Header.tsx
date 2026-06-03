@@ -7,18 +7,21 @@ import {
   Link2,
   Settings2,
   LogOut,
+  Menu,
   UserPlus,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAdminLogout } from "../hooks/useAdminLogout";
 
 interface HeaderProps {
+  onOpenSidebar?: () => void;
   onNavigateToSettings: (tab?: string) => void;
   profile?: any;
   variant?: "default" | "settings";
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  onOpenSidebar,
   onNavigateToSettings,
   profile,
   variant = "default",
@@ -44,10 +47,22 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       className={cn(
-        "bg-white flex items-center justify-end gap-6 sticky top-0 z-[100]",
+        "bg-white flex items-center gap-6 sticky top-0 z-[100]",
+        onOpenSidebar ? "justify-between md:justify-end" : "justify-end",
         isSettings ? "h-20 px-11" : "h-16 px-8 border-b border-slate-200",
       )}
     >
+      {onOpenSidebar && (
+        <button
+          type="button"
+          onClick={onOpenSidebar}
+          className="md:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50"
+          aria-label="Open sidebar"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
+
       <div className={cn("flex items-center", isSettings ? "gap-6" : "gap-4")}>
         <button
           className={cn(
