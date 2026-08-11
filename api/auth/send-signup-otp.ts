@@ -63,6 +63,26 @@ export default async function handler(req: any, res: any) {
     const nodemailer = nodemailerModule.default || nodemailerModule;
     const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
+    // Check if user or profile already exists
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("email", email)
+      .maybeSingle();
+
+    const { data: authUserData } = await supabaseAdmin.auth.admin.listUsers();
+    const existingAuthUser = authUserData?.users?.find(
+      (u: any) => u.email?.toLowerCase() === email,
+    );
+
+    if (existingProfile || existingAuthUser) {
+      return sendJson(res, 200, {
+        success: true,
+        exists: true,
+        message: "An account with this email already exists. Please log in.",
+      });
+    }
+
     const deleteResult = await supabaseAdmin
       .from("verification_codes")
       .delete()

@@ -127,13 +127,12 @@ export default function SignupPage() {
           return;
         }
 
-        setPassword("");
-        setConfirmPassword("");
-        setStep(5);
         window.history.replaceState({}, document.title, window.location.pathname);
-        startAccountSetup(session, user).catch(() => {
-          toast.error("We could not finish setting up your profile. Please try again.");
-        });
+        startAccountSetup(session, user)
+          .then(() => navigate("/admin"))
+          .catch(() => {
+            toast.error("We could not finish setting up your profile. Please try again.");
+          });
       }
     };
 
@@ -200,6 +199,11 @@ export default function SignupPage() {
 
       const data = await readApiResponse(response);
       if (response.ok) {
+        if (data.exists) {
+          toast.info("An account with this email already exists. Redirecting to login...");
+          navigate(`/admin/login?email=${encodeURIComponent(email)}`);
+          return;
+        }
         toast.success("OTP sent to your email");
         setSignupVerificationToken("");
         setStep(2);

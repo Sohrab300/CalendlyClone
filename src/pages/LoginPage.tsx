@@ -20,6 +20,15 @@ export const LoginPage: React.FC = () => {
   const from = (location.state as any)?.from?.pathname || "/admin";
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setEmail(emailParam);
+      setShowPassword(true);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
     let isMounted = true;
 
     getValidatedSession()
