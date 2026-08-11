@@ -39,7 +39,7 @@ It removes the back-and-forth of scheduling by handling booking forms, optional 
 - **Tailwind CSS v4**, **motion/react**, **lucide-react**, **sonner**
 
 ### Backend / API
-- **Express 4**, **Vercel Serverless (api/)**
+- **Vercel Serverless (api/)**
 - **nodemailer**, **googleapis**, **ical-generator**
 
 ### Data & Auth
@@ -59,8 +59,7 @@ It removes the back-and-forth of scheduling by handling booking forms, optional 
 | `src/context/` | Auth context wrapping Supabase session state |
 | `src/lib/` | Supabase client, utilities, OAuth redirect helpers |
 | `api/` | Vercel serverless functions: schedule, auth, OTP, profile, verification |
-| `server/` | Shared local server helpers: OTP, email, Supabase admin client |
-| `server.ts` | Local Express server, API routes, Vite middleware, Google logic |
+| `server/` | Shared backend helpers: OTP, email, Supabase admin client |
 | `supabase/` | Supabase project configuration and database assets |
 
 ---
@@ -80,7 +79,7 @@ It removes the back-and-forth of scheduling by handling booking forms, optional 
 # install dependencies
 $ npm install
 
-# local dev server (Express + Vite)
+# local dev server (Vercel CLI)
 $ npm run dev
 
 # production build
@@ -119,13 +118,11 @@ $ npm run clean
 | `EMAIL_PASS` | Gmail app password for `EMAIL_USER` | Yes |
 | `GOOGLE_CLIENT_ID` | OAuth client ID for Google Calendar / Gmail API | Yes |
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret for Google Calendar / Gmail API | Yes |
-| `GOOGLE_REDIRECT_URI` | OAuth redirect URI (used by local server.ts) | No |
+| `GOOGLE_REDIRECT_URI` | OAuth redirect URI | No |
 | `SENTRY_DSN` | Sentry server project DSN for API error reporting | No |
 | `SENTRY_AUTH_TOKEN` | Sentry auth token used by Vercel builds to upload production source maps | No |
 | `SENTRY_ORG` | Sentry organization slug used by Vercel source-map uploads | No |
 | `SENTRY_PROJECT` | Sentry project slug used by Vercel source-map uploads | No |
-| `PORT` | Local Express port (defaults to 3000) | No |
-| `NODE_ENV` | Enables Vite middleware in dev, serves dist in production | No |
 
 ---
 

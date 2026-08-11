@@ -32,7 +32,7 @@ const stackGroups = [
     title: "Backend",
     icon: Server,
     tone: "bg-teal-50 text-teal-700 border-teal-200",
-    tags: ["Node.js", "Express.js", "TypeScript", "REST API"],
+    tags: ["Node.js", "Vercel Serverless", "TypeScript", "REST API"],
   },
   {
     title: "Database & Auth",
@@ -61,7 +61,7 @@ const stackGroups = [
     title: "Deployment & Tooling",
     icon: Code2,
     tone: "bg-slate-100 text-slate-700 border-slate-200",
-    tags: ["Vercel", "npm", "tsx", "tsc"],
+    tags: ["Vercel", "npm", "Vite", "tsc"],
   },
 ];
 
