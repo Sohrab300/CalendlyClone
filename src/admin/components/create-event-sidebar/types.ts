@@ -15,6 +15,7 @@ export interface CreateEventSidebarProps {
   editingEvent?: any;
   profile?: any;
   onNavigateToAvailability?: (scheduleId: string) => void;
+  isSaving?: boolean;
 }
 
 export interface CreateEventPayload {

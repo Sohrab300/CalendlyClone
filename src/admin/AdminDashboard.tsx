@@ -75,6 +75,7 @@ export default function AdminDashboard() {
               editingEvent={dashboard.editingEvent}
               profile={dashboard.profile}
               onNavigateToAvailability={dashboard.navigateToAvailability}
+              isSaving={dashboard.isSaving}
             />
           )}
         </AnimatePresence>

@@ -37,25 +37,39 @@ const buildSlug = (title: string, existingEvents: EventType[]) => {
   return slug;
 };
 
+const getNextEventName = (existingEvents: EventType[]) => {
+  let maxCount = 0;
+  for (const event of existingEvents) {
+    const match = event.title.match(/^New Meeting(?:\s+(\d+))?$/i);
+    if (match) {
+      const num = match[1] ? parseInt(match[1], 10) : 1;
+      if (num > maxCount) maxCount = num;
+    }
+  }
+  const nextCount = maxCount > 0 ? maxCount + 1 : (existingEvents.length > 0 ? existingEvents.length + 1 : 1);
+  return `New Meeting ${nextCount}`;
+};
+
 export function useAdminDashboard() {
   const [sidebarTab, setSidebarTab] = React.useState('Scheduling');
   const [activeTab, setActiveTab] = React.useState('Event types');
   const [targetScheduleId, setTargetScheduleId] = React.useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const [newEventName, setNewEventName] = React.useState(DEFAULT_EVENT_NAME);
+  const [newEventName, setNewEventName] = React.useState('New Meeting 1');
   const [newEventColor, setNewEventColor] = React.useState(DEFAULT_EVENT_COLOR);
   const [editingEvent, setEditingEvent] = React.useState<EventType | null>(null);
   const [events, setEvents] = React.useState<EventType[]>([]);
   const [schedules, setSchedules] = React.useState<ScheduleOption[]>([]);
   const [weeklyHoursByScheduleId, setWeeklyHoursByScheduleId] = React.useState<Record<string, DayAvailability[]>>({});
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = React.useState(false);
   const [profile, setProfile] = React.useState<AdminProfile | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [settingsTab, setSettingsTab] = React.useState<SettingsTab>('Profile');
 
-  const resetDraftEvent = () => {
+  const resetDraftEvent = (currentEvents: EventType[] = events) => {
     setEditingEvent(null);
-    setNewEventName(DEFAULT_EVENT_NAME);
+    setNewEventName(getNextEventName(currentEvents));
     setNewEventColor(DEFAULT_EVENT_COLOR);
   };
 
@@ -79,6 +93,7 @@ export function useAdminDashboard() {
       setProfile(profileResponse.data);
 
       setEvents(eventsData);
+      resetDraftEvent(eventsData);
       setSchedules(schedulesData || []);
       const weeklyHoursEntries = await Promise.all(
         (schedulesData || []).map(async (schedule) => [
@@ -107,7 +122,9 @@ export function useAdminDashboard() {
       for (const id of selectedIds) {
         await availabilityService.deleteEventType(id);
       }
-      setEvents(prev => prev.filter(event => !selectedIds.has(event.id)));
+      const remainingEvents = events.filter(event => !selectedIds.has(event.id));
+      setEvents(remainingEvents);
+      resetDraftEvent(remainingEvents);
       setSelectedIds(new Set());
     } catch (error) {
       console.error('Error deleting events:', error);
@@ -149,6 +166,8 @@ export function useAdminDashboard() {
   };
 
   const handleCreateEvent = async (data: EventFormData) => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       const userSlug = profile?.username;
       if (!userSlug) {
@@ -232,12 +251,13 @@ export function useAdminDashboard() {
         };
 
         const created = await availabilityService.createEventType(newEvent as any);
-        setEvents(prev => [...prev, created]);
+        const updatedEvents = [...events, created];
+        setEvents(updatedEvents);
         toast.success('Event type created successfully');
+        resetDraftEvent(updatedEvents);
       }
 
       setIsSidebarOpen(false);
-      resetDraftEvent();
     } catch (error) {
       console.error('Error saving event:', error);
       captureAppError(error, {
@@ -246,6 +266,8 @@ export function useAdminDashboard() {
         eventId: editingEvent?.id,
       });
       toast.error('Failed to save event type');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -283,6 +305,7 @@ export function useAdminDashboard() {
     handleOpenCreate,
     handleViewLandingPage,
     isLoading,
+    isSaving,
     isSidebarOpen,
     navigateToAvailability,
     navigateToSettings,

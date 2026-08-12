@@ -35,6 +35,7 @@ import {
   Search,
   Check,
   PlusCircle,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -111,6 +112,7 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
   editingEvent,
   profile,
   onNavigateToAvailability,
+  isSaving,
 }) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [isColorPickerOpen, setIsColorPickerOpen] = React.useState(false);
@@ -3907,9 +3909,17 @@ export const CreateEventSidebar: React.FC<CreateEventSidebarProps> = ({
                       : null,
                   });
                 }}
-                className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition-colors"
+                disabled={isSaving}
+                className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Save changes
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save changes"
+                )}
               </button>
             </div>
           </div>
