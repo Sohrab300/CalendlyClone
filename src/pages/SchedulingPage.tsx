@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Loader2, Globe, ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
+import { toast } from "sonner";
 import {
   format,
   addMinutes,
@@ -414,9 +415,26 @@ export default function SchedulingPage() {
         body: JSON.stringify({ email: pendingData.email, code }),
       });
 
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Invalid verification code");
+        if (response.status === 400 || response.status === 422) {
+          toast.error(data?.error || "Invalid verification code. Please try again.");
+          return;
+        }
+
+        const error = new Error(data?.error || "Verification failed");
+        captureAppError(error, {
+          route: "/:userSlug/:eventSlug",
+          stage: "invitee_verification_verify",
+          status: response.status,
+          hostUsername: userSlug,
+          eventSlug,
+          eventTitle: event?.title,
+          inviteeEmail: pendingData.email,
+        });
+        toast.error(error.message);
+        return;
       }
 
       await processFinalBooking(pendingData);
@@ -429,7 +447,7 @@ export default function SchedulingPage() {
         eventTitle: event?.title,
         inviteeEmail: pendingData.email,
       });
-      alert(err.message || "Verification failed. Please try again.");
+      toast.error("Verification failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

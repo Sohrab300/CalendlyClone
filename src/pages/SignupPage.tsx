@@ -246,12 +246,14 @@ export default function SignupPage() {
         setSignupVerificationToken(data.verificationToken || "");
         setStep(3);
       } else {
-        captureAppError(new Error(data.error || "Invalid or expired OTP"), {
-          route: "/signup",
-          stage: "verify_signup_otp",
-          status: response.status,
-          email,
-        });
+        if (response.status !== 400 && response.status !== 422) {
+          captureAppError(new Error(data.error || "Invalid or expired OTP"), {
+            route: "/signup",
+            stage: "verify_signup_otp",
+            status: response.status,
+            email,
+          });
+        }
         toast.error(data.error || "Invalid or expired OTP. Please try again.");
       }
     } catch (error) {
