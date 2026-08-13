@@ -449,7 +449,9 @@ export default async function handler(req: any, res: any) {
     });
 
     return sendJson(res, 500, {
-      error: "Failed to ensure profile",
+      error: errorDetails.message || "Failed to ensure profile",
+      details: errorDetails.details || errorDetails.hint || null,
+      code: errorDetails.code || null,
       requestId,
       stage,
     });

@@ -117,6 +117,76 @@ export function useAdminDashboard() {
     loadData();
   }, [loadData]);
 
+  const selectedEvents = events.filter((e) => selectedIds.has(e.id));
+  const isAllOff =
+    selectedEvents.length > 0 &&
+    selectedEvents.every((e) => e.is_active === false);
+
+  const handleToggleStatus = async () => {
+    if (selectedIds.size === 0) return;
+
+    const targetStatus = isAllOff;
+
+    try {
+      const updatedEvents = await Promise.all(
+        selectedEvents.map(async (event) => {
+          try {
+            return await availabilityService.updateEventType(event.id, {
+              is_active: targetStatus,
+            });
+          } catch {
+            return { ...event, is_active: targetStatus };
+          }
+        }),
+      );
+
+      const updatedMap = new Map(updatedEvents.map((e) => [e.id, e]));
+      setEvents((prev) =>
+        prev.map((e) => (updatedMap.has(e.id) ? updatedMap.get(e.id)! : e)),
+      );
+
+      toast.success(
+        targetStatus
+          ? `${selectedEvents.length} event(s) turned ON`
+          : `${selectedEvents.length} event(s) turned OFF (hidden from landing page)`,
+      );
+    } catch (error) {
+      console.error("Error toggling event status:", error);
+      captureAppError(error, {
+        route: "/admin",
+        stage: "toggle_event_status",
+      });
+      toast.error("Failed to update event status");
+    }
+  };
+
+  const handleToggleSingleStatus = async (event: EventType) => {
+    const targetStatus = event.is_active === false;
+    try {
+      let updated: EventType;
+      try {
+        updated = await availabilityService.updateEventType(event.id, {
+          is_active: targetStatus,
+        });
+      } catch {
+        updated = { ...event, is_active: targetStatus };
+      }
+
+      setEvents((prev) =>
+        prev.map((e) => (e.id === event.id ? updated : e)),
+      );
+
+      toast.success(
+        targetStatus
+          ? `"${event.title}" turned ON`
+          : `"${event.title}" turned OFF (hidden from landing page)`,
+      );
+    } catch (error) {
+      console.error("Error toggling event status:", error);
+      toast.error("Failed to update event status");
+    }
+  };
+
   const handleDelete = async () => {
     try {
       for (const id of selectedIds) {
@@ -304,6 +374,9 @@ export function useAdminDashboard() {
     handleEditEvent,
     handleOpenCreate,
     handleViewLandingPage,
+    handleToggleStatus,
+    handleToggleSingleStatus,
+    isAllOff,
     isLoading,
     isSaving,
     isSidebarOpen,

@@ -99,39 +99,47 @@ export default function LandingPage() {
           <div className="h-px bg-slate-300 w-full md:w-[90%] lg:w-[80%] mb-8" />
 
           <div className="w-full md:w-[90%] lg:w-[80%] grid grid-cols-1 md:grid-cols-2 gap-4">
-            {events.map((event) => (
-              <Link
-                key={event.id}
-                to={`/${userSlug}/${event.slug}`}
-                state={{ fromLandingPage: true, landingPath: `/${userSlug}` }}
-                className="flex items-start justify-between p-4 hover:bg-slate-50 rounded-lg transition-colors group"
-              >
-                <div className="w-full">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={cn(
-                          "w-8 h-8 rounded-full",
-                          !event.color.startsWith("bg-[") && event.color,
-                        )}
-                        style={{
-                          backgroundColor: event.color.startsWith("bg-[")
-                            ? event.color.slice(4, -1)
-                            : undefined,
-                        }}
-                      />
-                      <span className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                        {event.title}
-                      </span>
+            {events.filter((event) => event.is_active !== false).length === 0 ? (
+              <div className="col-span-2 text-center py-12 text-slate-400">
+                No active event types available at the moment.
+              </div>
+            ) : (
+              events
+                .filter((event) => event.is_active !== false)
+                .map((event) => (
+                  <Link
+                    key={event.id}
+                    to={`/${userSlug}/${event.slug}`}
+                    state={{ fromLandingPage: true, landingPath: `/${userSlug}` }}
+                    className="flex items-start justify-between p-4 hover:bg-slate-50 rounded-lg transition-colors group"
+                  >
+                    <div className="w-full">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={cn(
+                              "w-8 h-8 rounded-full",
+                              !event.color.startsWith("bg-[") && event.color,
+                            )}
+                            style={{
+                              backgroundColor: event.color.startsWith("bg-[")
+                                ? event.color.slice(4, -1)
+                                : undefined,
+                            }}
+                          />
+                          <span className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                            {event.title}
+                          </span>
+                        </div>
+                        <ChevronRight className="w-6 h-6 text-slate-900" />
+                      </div>
+                      <p className="text-sm text-slate-500 mt-8">
+                        {event.description}
+                      </p>
                     </div>
-                    <ChevronRight className="w-6 h-6 text-slate-900" />
-                  </div>
-                  <p className="text-sm text-slate-500 mt-8">
-                    {event.description}
-                  </p>
-                </div>
-              </Link>
-            ))}
+                  </Link>
+                ))
+            )}
           </div>
         </div>
 

@@ -7,6 +7,8 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { DayAvailability, EventType } from "../../services/availabilityService";
@@ -30,6 +32,7 @@ interface SchedulingViewProps {
   onEditEvent: (event: EventType) => void;
   onTabChange: (tab: string) => void;
   onToggleSelection: (id: string) => void;
+  onToggleSingleStatus?: (event: EventType) => void;
   onViewLandingPage: () => void;
 }
 
@@ -49,6 +52,7 @@ export const SchedulingView: React.FC<SchedulingViewProps> = ({
   onEditEvent,
   onTabChange,
   onToggleSelection,
+  onToggleSingleStatus,
   onViewLandingPage,
 }) => (
   <div className="w-full md:max-w-5xl md:mx-auto">
@@ -92,6 +96,7 @@ export const SchedulingView: React.FC<SchedulingViewProps> = ({
           onCopyLink={onCopyLink}
           onEditEvent={onEditEvent}
           onToggleSelection={onToggleSelection}
+          onToggleSingleStatus={onToggleSingleStatus}
         />
       ))}
     </div>
@@ -308,34 +313,54 @@ const ProfileEventTypeHeader: React.FC<{
   </div>
 );
 
+const getStyleAndClassForColor = (colorStr?: string) => {
+  if (!colorStr) return { className: "bg-blue-600" };
+  if (colorStr.startsWith("bg-[")) {
+    return { style: { backgroundColor: colorStr.slice(4, -1) } };
+  }
+  if (colorStr.startsWith("#") || colorStr.startsWith("rgb")) {
+    return { style: { backgroundColor: colorStr } };
+  }
+  if (colorStr.startsWith("bg-")) {
+    return { className: colorStr };
+  }
+  return { style: { backgroundColor: colorStr } };
+};
+
 const DraftEventCard: React.FC<{
   color: string;
   name: string;
   scheduleSummary: string;
-}> = ({ color, name, scheduleSummary }) => (
-  <div className="bg-blue-50/50 border border-blue-200 rounded-lg shadow-sm overflow-hidden flex animate-in fade-in slide-in-from-top-2 duration-300">
-    <div className="w-2" style={{ backgroundColor: color }} />
-    <div className="flex-1 p-6">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
-          <input
-            type="checkbox"
-            disabled
-            className="mt-1.5 w-4 h-4 rounded border-slate-300 text-blue-600 opacity-50"
-          />
-          <div>
-            <h3 className="text-lg font-bold text-slate-800 mb-1">{name}</h3>
-            <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-              <AlertCircle className="w-4 h-4 text-orange-500 fill-orange-500 text-white" />
-              <span>30 min • No location set • One-on-One</span>
+}> = ({ color, name, scheduleSummary }) => {
+  const colorProps = getStyleAndClassForColor(color);
+  return (
+    <div className="bg-blue-50/50 border border-blue-200 rounded-lg shadow-sm overflow-hidden flex animate-in fade-in slide-in-from-top-2 duration-300">
+      <div
+        className={cn("w-2 shrink-0", colorProps.className)}
+        style={colorProps.style}
+      />
+      <div className="flex-1 p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-4">
+            <input
+              type="checkbox"
+              disabled
+              className="mt-1.5 w-4 h-4 rounded border-slate-300 text-blue-600 opacity-50"
+            />
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-1">{name}</h3>
+              <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+                <AlertCircle className="w-4 h-4 text-orange-500 fill-orange-500 text-white" />
+                <span>30 min • No location set • One-on-One</span>
+              </div>
+              <p className="text-sm text-slate-500">{scheduleSummary}</p>
             </div>
-            <p className="text-sm text-slate-500">{scheduleSummary}</p>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const EventTypeCard: React.FC<{
   event: EventType;
@@ -346,6 +371,7 @@ const EventTypeCard: React.FC<{
   onCopyLink: (event: EventType) => void;
   onEditEvent: (event: EventType) => void;
   onToggleSelection: (id: string) => void;
+  onToggleSingleStatus?: (event: EventType) => void;
 }> = ({
   event,
   isSelected,
@@ -355,9 +381,12 @@ const EventTypeCard: React.FC<{
   onCopyLink,
   onEditEvent,
   onToggleSelection,
+  onToggleSingleStatus,
 }) => {
   const displayColor = previewColor || event.color;
   const displayTitle = previewTitle || event.title;
+  const colorProps = getStyleAndClassForColor(displayColor);
+  const isOff = event.is_active === false;
 
   return (
     <div
@@ -365,15 +394,12 @@ const EventTypeCard: React.FC<{
       className={cn(
         "bg-white border rounded-lg shadow-sm overflow-hidden flex hover:shadow-md transition-all cursor-pointer group",
         isSelected ? "border-blue-600 bg-blue-50/30" : "border-slate-200",
+        isOff && "opacity-80 bg-slate-50/50",
       )}
     >
       <div
-        className={cn("w-2", !displayColor.startsWith("bg-[") && displayColor)}
-        style={{
-          backgroundColor: displayColor.startsWith("bg-[")
-            ? displayColor.slice(4, -1)
-            : undefined,
-        }}
+        className={cn("w-2 shrink-0", colorProps.className, isOff && "opacity-50")}
+        style={colorProps.style}
       />
       <div className="flex-1 p-4 md:p-6">
         <div className="flex items-start justify-between">
@@ -389,9 +415,16 @@ const EventTypeCard: React.FC<{
               onClick={(e) => e.stopPropagation()}
             />
             <div>
-              <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
-                {displayTitle}
-              </h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                  {displayTitle}
+                </h3>
+                {isOff && (
+                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-600 rounded-full">
+                    Off (Hidden)
+                  </span>
+                )}
+              </div>
               <p className="text-[12px] md:text-sm text-slate-500 mb-1">
                 {event.duration} min • {event.location} • {event.type}
               </p>
@@ -402,6 +435,27 @@ const EventTypeCard: React.FC<{
             className="flex items-center gap-3"
             onClick={(e) => e.stopPropagation()}
           >
+            {onToggleSingleStatus && (
+              <button
+                type="button"
+                onClick={() => onToggleSingleStatus(event)}
+                title={isOff ? "Turn event ON" : "Turn event OFF (Hide from landing page)"}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-xs font-bold transition-colors",
+                  isOff
+                    ? "border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
+                )}
+              >
+                {isOff ? (
+                  <ToggleLeft className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ToggleRight className="w-4 h-4 text-blue-600" />
+                )}
+                <span>{isOff ? "OFF" : "ON"}</span>
+              </button>
+            )}
+
             <button
               onClick={() => onCopyLink(event)}
               className="flex items-center gap-2 px-2 py-1 md:px-4 md:py-2 border border-slate-200 rounded-full text-[12px] md:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors"

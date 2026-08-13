@@ -79,6 +79,7 @@ export interface EventType {
   type: string;
   color: string;
   link: string;
+  is_active?: boolean;
   schedule_id?: string;
   created_at?: string;
   buffer_before?: number;

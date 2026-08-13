@@ -1,17 +1,22 @@
 import React from 'react';
-import { ChevronDown, ToggleLeft, Trash2, X } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Trash2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { cn } from '../../lib/utils';
 
 interface SelectedEventsToolbarProps {
   selectedCount: number;
   onClear: () => void;
   onDelete: () => void;
+  onToggleStatus: () => void;
+  isAllOff?: boolean;
 }
 
 export const SelectedEventsToolbar: React.FC<SelectedEventsToolbarProps> = ({
   selectedCount,
   onClear,
   onDelete,
+  onToggleStatus,
+  isAllOff = false,
 }) => (
   <AnimatePresence>
     {selectedCount > 0 && (
@@ -37,10 +42,21 @@ export const SelectedEventsToolbar: React.FC<SelectedEventsToolbarProps> = ({
             Delete
           </button>
 
-          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-full text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-            <ToggleLeft className="w-4 h-4" />
-            Toggle on/off
-            <ChevronDown className="w-4 h-4" />
+          <button
+            onClick={onToggleStatus}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 border rounded-full text-sm font-bold transition-all",
+              isAllOff
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                : "border-slate-200 text-slate-700 hover:bg-slate-50",
+            )}
+          >
+            {isAllOff ? (
+              <ToggleRight className="w-5 h-5 text-emerald-600" />
+            ) : (
+              <ToggleLeft className="w-5 h-5 text-slate-500" />
+            )}
+            <span>{isAllOff ? "Turn ON" : "Turn OFF"}</span>
           </button>
         </div>
 

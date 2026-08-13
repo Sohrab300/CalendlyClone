@@ -98,6 +98,7 @@ export default function AdminDashboard() {
           onEditEvent={dashboard.handleEditEvent}
           onTabChange={dashboard.setActiveTab}
           onToggleSelection={dashboard.toggleSelection}
+          onToggleSingleStatus={dashboard.handleToggleSingleStatus}
           onViewLandingPage={dashboard.handleViewLandingPage}
         />
       ) : dashboard.sidebarTab === "Meetings" ? (
@@ -118,6 +119,8 @@ export default function AdminDashboard() {
         selectedCount={dashboard.selectedIds.size}
         onClear={() => dashboard.setSelectedIds(new Set())}
         onDelete={dashboard.handleDelete}
+        onToggleStatus={dashboard.handleToggleStatus}
+        isAllOff={dashboard.isAllOff}
       />
     </AdminShell>
   );
