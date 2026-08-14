@@ -72,12 +72,17 @@ export const LoginPage: React.FC = () => {
       });
 
       if (error) {
-        captureAppError(error, {
-          route: "/admin/login",
-          stage: "password_login",
-          email,
-        });
-        toast.error(error.message);
+        if (
+          error.status !== 400 &&
+          !error.message.toLowerCase().includes("invalid login credentials")
+        ) {
+          captureAppError(error, {
+            route: "/admin/login",
+            stage: "password_login",
+            email,
+          });
+        }
+        toast.error(error.message || "Invalid email or password");
         setLoading(false);
       } else {
         try {
