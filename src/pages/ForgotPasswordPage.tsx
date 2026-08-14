@@ -35,12 +35,21 @@ export default function ForgotPasswordPage() {
       const data = await readApiResponse(response);
 
       if (!response.ok) {
-        captureAppError(new Error(data.error || "Failed to send password reset link"), {
-          route: "/forgot-password",
-          stage: "request_password_reset",
-          status: response.status,
-          email,
-        });
+        if (
+          response.status !== 400 &&
+          response.status !== 404 &&
+          response.status !== 422
+        ) {
+          captureAppError(
+            new Error(data.error || "Failed to send password reset link"),
+            {
+              route: "/forgot-password",
+              stage: "request_password_reset",
+              status: response.status,
+              email,
+            },
+          );
+        }
         toast.error(data.error || "Failed to send password reset link");
         return;
       }
